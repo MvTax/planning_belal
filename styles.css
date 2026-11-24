@@ -122,6 +122,8 @@ dialog h2 { margin: 0 0 10px; font-size: 18px; }
 fieldset { border: 1px solid var(--line); border-radius: 12px; margin: 0 0 12px; padding: 10px 12px 12px; }
 legend { font-weight: 700; padding: 0 4px; }
 fieldset input[type="password"] { width: 100%; }
+[data-for] { margin-top: 6px; }
+[data-for][hidden] { display: none; }
 .emp { border-bottom: 1px solid var(--line); padding: 6px 0; }
 .emp:last-child { border-bottom: 0; }
 .emp-row { display: grid; grid-template-columns: auto 1fr 90px auto; gap: 6px; align-items: center; margin-bottom: 6px; }

@@ -2,6 +2,7 @@
 // Tout tourne dans le navigateur ; les données restent sur le téléphone (localStorage).
 
 const MODEL = "claude-opus-5-5";
+const GEMINI_DEFAUT = "gemini-3.8-flash"; // utilisé seulement si la liste des modèles est inaccessible
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const JOURS_COURTS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 const STATUTS = {
@@ -49,7 +50,9 @@ const store = {
 
 const state = {
   settings: store.get("fp.settings", structuredClone(DEFAULT_SETTINGS)),
-  apiKey: store.get("fp.apikey", ""),
+  provider: store.get("fp.provider", "gemini"), // "gemini" ou "claude"
+  geminiKey: store.get("fp.geminikey", ""),
+  apiKey: store.get("fp.apikey", ""), // clé Claude
   planning: store.get("fp.planning", {}), // { nom: { "YYYY-MM-DD": entrée } }
   periode: store.get("fp.periode", null), // { debut, fin }
   remarques: store.get("fp.remarques", ""),
@@ -61,6 +64,8 @@ for (const e of state.settings.employes) e.horaires ||= structuredClone(HORAIRES
 
 function save() {
   store.set("fp.settings", state.settings);
+  store.set("fp.provider", state.provider);
+  store.set("fp.geminikey", state.geminiKey);
   store.set("fp.apikey", state.apiKey);
   store.set("fp.planning", state.planning);
   store.set("fp.periode", state.periode);
@@ -184,7 +189,7 @@ function trouverSalarie(nomLu) {
   return best ? best.emp : null;
 }
 
-// ---------- Lecture de la photo par Claude ----------
+// ---------- Lecture de la photo (Gemini ou Claude) ----------
 const SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -272,11 +277,109 @@ async function preparerImage(file) {
   }
 }
 
-async function lirePlanning(files) {
-  const { Anthropic } = await import("./vendor/anthropic.js");
-  const images = await Promise.all(files.map(preparerImage));
-  const client = new Anthropic({ apiKey: state.apiKey, dangerouslyAllowBrowser: true, maxRetries: 2 });
+function consigneUtilisateur() {
   const connus = state.settings.employes.map((e) => `${e.nom} (boutique ${e.boutique})`).join(", ");
+  return `Date du jour : ${toISO(new Date())}.\nSalariés connus : ${connus || "aucun"}.\nLis ce planning et renvoie ce que fait chaque salarié pour chaque jour visible.`;
+}
+
+function analyserJSON(text) {
+  try {
+    return JSON.parse(String(text || "").replace(/^```(?:json)?\s*|\s*```$/g, ""));
+  } catch {
+    throw new Error("Réponse illisible. Réessayez.");
+  }
+}
+
+async function lirePlanning(files) {
+  const images = await Promise.all(files.map(preparerImage));
+  return state.provider === "claude" ? lireAvecClaude(images) : lireAvecGemini(images);
+}
+
+// ----- Google Gemini -----
+// Choisit le meilleur modèle « flash » stable disponible pour cette clé (mis en cache une semaine).
+async function choisirModeleGemini(ai) {
+  const cache = store.get("fp.gemini.model", null);
+  if (cache?.name && Date.now() - cache.t < 7 * 864e5) return cache.name;
+  const noms = [];
+  const pager = await ai.models.list({ config: { pageSize: 100 } });
+  for await (const m of pager) {
+    const name = String(m.name || "").replace(/^models\//, "");
+    if (m.supportedActions && !m.supportedActions.includes("generateContent")) continue;
+    if (!/^gemini-\d/.test(name)) continue;
+    if (/(tts|image|live|audio|embed|transcribe|customtools|robotics|computer|lite|exp|thinking|-\d{3}$|\d{2}-\d{2})/.test(name)) continue;
+    noms.push(name);
+  }
+  const version = (n) => parseFloat(n.match(/^gemini-(\d+(?:\.\d+)?)/)?.[1] || "0");
+  const score = (n) => version(n) * 10 + (n.includes("flash") ? 3 : 0) + (n.includes("preview") ? -5 : 0);
+  noms.sort((x, y) => score(y) - score(x));
+  const name = noms[0] || GEMINI_DEFAUT;
+  store.set("fp.gemini.model", { name, t: Date.now() });
+  return name;
+}
+
+async function lireAvecGemini(images) {
+  const { GoogleGenAI, ApiError } = await import("./vendor/gemini.js");
+  const ai = new GoogleGenAI({ apiKey: state.geminiKey });
+  const contents = [
+    {
+      role: "user",
+      parts: [...images.map((data) => ({ inlineData: { mimeType: "image/jpeg", data } })), { text: consigneUtilisateur() }],
+    },
+  ];
+  const base = { systemInstruction: SYSTEM_PROMPT, responseMimeType: "application/json" };
+  // Du plus complet au plus simple, au cas où un modèle refuse une option
+  const essais = [
+    { ...base, responseJsonSchema: SCHEMA, thinkingConfig: { thinkingLevel: "HIGH" } },
+    { ...base, responseJsonSchema: SCHEMA },
+    base,
+  ];
+
+  const erreur = (err) => {
+    const msg = String(err?.message || "");
+    if (/API key not valid|API_KEY_INVALID|api key/i.test(msg) && err?.status === 400) return new Error("Clé API Gemini refusée. Vérifiez-la dans les réglages (⚙︎).");
+    if (err?.status === 403) return new Error("Cette clé Gemini n'a pas accès au service. Vérifiez-la sur aistudio.google.com.");
+    if (err?.status === 429) return new Error("Quota Gemini atteint. Réessayez dans une minute (ou plus tard dans la journée).");
+    if (err instanceof TypeError) return new Error("Pas de connexion internet. Réessayez.");
+    return new Error(`Erreur Gemini (${err?.status ?? "?"}) : ${msg.slice(0, 200)}`);
+  };
+
+  let model;
+  try {
+    model = await choisirModeleGemini(ai);
+  } catch (err) {
+    if (err instanceof ApiError && err.status !== 404) throw erreur(err);
+    model = GEMINI_DEFAUT;
+  }
+
+  let response, derniere;
+  for (const config of essais) {
+    try {
+      response = await ai.models.generateContent({ model, contents, config });
+      break;
+    } catch (err) {
+      derniere = err;
+      if (err instanceof ApiError && err.status === 404) {
+        store.set("fp.gemini.model", null); // modèle retiré : on en choisira un autre la prochaine fois
+        throw new Error("Modèle Gemini indisponible. Réessayez.");
+      }
+      const optionRefusee = err instanceof ApiError && err.status === 400 && !/api key/i.test(String(err.message));
+      if (!optionRefusee) throw erreur(err);
+    }
+  }
+  if (!response) throw erreur(derniere);
+
+  if (response.promptFeedback?.blockReason) throw new Error("La photo n'a pas pu être analysée. Reprenez le scan du planning.");
+  const fin = response.candidates?.[0]?.finishReason;
+  if (fin === "MAX_TOKENS") throw new Error("Le planning est trop long pour une seule lecture. Scannez-le en plusieurs pages.");
+  if (fin && fin !== "STOP") throw new Error("La photo n'a pas pu être analysée. Reprenez le scan du planning.");
+  state.dernierModele = model;
+  return analyserJSON(response.text);
+}
+
+// ----- Claude (Anthropic) -----
+async function lireAvecClaude(images) {
+  const { Anthropic } = await import("./vendor/anthropic.js");
+  const client = new Anthropic({ apiKey: state.apiKey, dangerouslyAllowBrowser: true, maxRetries: 2 });
 
   let response;
   try {
@@ -292,16 +395,13 @@ async function lirePlanning(files) {
           role: "user",
           content: [
             ...images.map((data) => ({ type: "image", source: { type: "base64", media_type: "image/jpeg", data } })),
-            {
-              type: "text",
-              text: `Date du jour : ${toISO(new Date())}.\nSalariés connus : ${connus || "aucun"}.\nLis ce planning et renvoie les horaires de chaque salarié pour chaque jour visible.`,
-            },
+            { type: "text", text: consigneUtilisateur() },
           ],
         },
       ],
     });
   } catch (err) {
-    if (err instanceof Anthropic.AuthenticationError) throw new Error("Clé API refusée. Vérifiez-la dans les réglages (⚙︎).");
+    if (err instanceof Anthropic.AuthenticationError) throw new Error("Clé API Claude refusée. Vérifiez-la dans les réglages (⚙︎).");
     if (err instanceof Anthropic.PermissionDeniedError) throw new Error("Cette clé API n'a pas accès au modèle. Vérifiez votre compte Anthropic.");
     if (err instanceof Anthropic.RateLimitError) throw new Error("Trop de demandes ou crédit épuisé. Réessayez dans une minute ou vérifiez votre crédit Anthropic.");
     if (err instanceof Anthropic.APIConnectionError) throw new Error("Pas de connexion internet. Réessayez.");
@@ -309,14 +409,10 @@ async function lirePlanning(files) {
     throw err;
   }
 
-  if (response.stop_reason === "refusal") throw new Error("La photo n'a pas pu être analysée. Reprenez une photo du planning.");
-  if (response.stop_reason === "max_tokens") throw new Error("Le planning est trop long pour une seule photo. Essayez avec moins de semaines par photo.");
-  const text = response.content.filter((b) => b.type === "text").map((b) => b.text).join("");
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new Error("Réponse illisible. Réessayez.");
-  }
+  if (response.stop_reason === "refusal") throw new Error("La photo n'a pas pu être analysée. Reprenez le scan du planning.");
+  if (response.stop_reason === "max_tokens") throw new Error("Le planning est trop long pour une seule lecture. Scannez-le en plusieurs pages.");
+  state.dernierModele = MODEL;
+  return analyserJSON(response.content.filter((b) => b.type === "text").map((b) => b.text).join(""));
 }
 
 function integrerResultat(result) {
@@ -608,6 +704,9 @@ function imprimer() {
 // ---------- Réglages ----------
 function rendreReglages() {
   document.getElementById("s-apikey").value = state.apiKey;
+  document.getElementById("s-geminikey").value = state.geminiKey;
+  for (const r of document.querySelectorAll('input[name="provider"]')) r.checked = r.value === state.provider;
+  afficherChampCle();
   const list = document.getElementById("s-employes");
   list.innerHTML = state.settings.employes
     .map(
@@ -635,6 +734,13 @@ function rendreReglages() {
       </div>`,
     )
     .join("");
+}
+
+const cleActive = () => (state.provider === "claude" ? state.apiKey : state.geminiKey);
+
+function afficherChampCle() {
+  const p = document.querySelector('input[name="provider"]:checked')?.value || "gemini";
+  for (const el of document.querySelectorAll("[data-for]")) el.hidden = el.dataset.for !== p;
 }
 
 function lireHoraires(div) {
@@ -665,6 +771,8 @@ function lireReglages() {
   }
   state.settings.employes = employes;
   state.apiKey = document.getElementById("s-apikey").value.trim();
+  state.geminiKey = document.getElementById("s-geminikey").value.trim();
+  state.provider = document.querySelector('input[name="provider"]:checked')?.value || "gemini";
 }
 
 // Exemple : la colonne de Belal sur le planning de novembre 2026, telle que la lecture doit la renvoyer.
@@ -714,8 +822,8 @@ function rendreMiniatures() {
 async function lancerLecture() {
   const $ = (id) => document.getElementById(id);
   const dlg = $("settings");
-  if (!state.apiKey) {
-    setStatus("Ajoutez d'abord votre clé API Claude dans les réglages.", "error");
+  if (!cleActive()) {
+    setStatus("Ajoutez d'abord votre clé API dans les réglages (⚙︎).", "error");
     rendreReglages();
     dlg.returnValue = "";
     dlg.showModal();
@@ -730,7 +838,7 @@ async function lancerLecture() {
     integrerResultat(result);
     state.photos = [];
     rendreMiniatures();
-    setStatus("Fiches remplies. Vérifiez l'aperçu puis imprimez.");
+    setStatus(`Fiches remplies (lu avec ${state.dernierModele}). Vérifiez l'aperçu puis imprimez.`);
     afficherResultat();
     $("step-result").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (err) {
@@ -806,6 +914,9 @@ function init() {
     const inputs = document.querySelectorAll("#s-employes .emp-nom");
     inputs[inputs.length - 1]?.focus();
   });
+  $("settings-form").addEventListener("change", (ev) => {
+    if (ev.target.name === "provider") afficherChampCle();
+  });
   $("s-employes").addEventListener("click", (ev) => {
     if (!ev.target.classList.contains("del")) return;
     lireReglages();
@@ -832,7 +943,7 @@ function init() {
     lireReglages();
     save();
     afficherResultat();
-    if (state.apiKey && state.photos.length) lancerLecture(); // clé ajoutée juste après un scan
+    if (cleActive() && state.photos.length) lancerLecture(); // clé ajoutée juste après un scan
   });
 
   let t;
