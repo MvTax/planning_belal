@@ -122,12 +122,16 @@ dialog h2 { margin: 0 0 10px; font-size: 18px; }
 fieldset { border: 1px solid var(--line); border-radius: 12px; margin: 0 0 12px; padding: 10px 12px 12px; }
 legend { font-weight: 700; padding: 0 4px; }
 fieldset input[type="password"] { width: 100%; }
+.emp { border-bottom: 1px solid var(--line); padding: 6px 0; }
+.emp:last-child { border-bottom: 0; }
 .emp-row { display: grid; grid-template-columns: auto 1fr 90px auto; gap: 6px; align-items: center; margin-bottom: 6px; }
 .emp-row input[type="text"] { width: 100%; min-width: 0; }
+.emp-h summary { font-size: 14px; color: var(--primary); padding: 4px 0 4px 28px; cursor: pointer; }
+.h-grid { display: grid; grid-template-columns: 36px repeat(4, minmax(0, 1fr)); gap: 4px; align-items: center; font-size: 11px; color: var(--muted); margin: 4px 0 6px; }
+.h-grid input { width: 100%; min-width: 0; padding: 4px 2px; font-size: 14px; min-height: 34px; }
+.h-grid input::-webkit-calendar-picker-indicator { display: none; }
 .emp-row .del { border: 0; background: none; color: var(--danger); font-size: 20px; width: 32px; height: 40px; }
 .check { display: flex; gap: 8px; align-items: center; font-size: 15px; }
-.row2 { display: flex; gap: 12px; margin-top: 8px; }
-.row2 label { display: flex; align-items: center; gap: 6px; }
 .link-btn { display: block; border: 0; background: none; color: var(--primary); font: inherit; font-size: 15px; padding: 8px 0; text-align: left; }
 .link-btn.danger { color: var(--danger); }
 .dialog-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

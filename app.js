@@ -5,18 +5,27 @@ const MODEL = "claude-opus-5-5";
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const JOURS_COURTS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 const STATUTS = {
-  travail: "Travail",
+  travail: "Travaille (OK)",
   repos: "Repos",
-  conge: "Congé payé",
+  conge: "Congé payé (CP)",
+  ecole: "École",
   maladie: "Maladie",
   absent: "Absent",
-  autre: "Autre absence",
+  remplace: "Remplacé(e)",
+  autre: "Autre",
 };
-const ABSENCE_TEXTE = { conge: "CONGÉ PAYÉ", maladie: "MALADIE", absent: "ABSENT", autre: "ABSENCE" };
+// Texte écrit en rouge sur la ligne de la fiche ("" = ligne laissée vide, seulement la date)
+const ABSENCE_TEXTE = { conge: "CONGÉ PAYÉ", ecole: "ÉCOLE", maladie: "MALADIE", absent: "ABSENT", remplace: "" };
+
+// Horaires habituels (lundi → dimanche). Le planning dit seulement « OK » : les heures viennent d'ici.
+const H = (arrivee, debut_pause, fin_pause, depart) => ({ arrivee, debut_pause, fin_pause, depart });
+const HORAIRES_DEFAUT = [
+  ...Array.from({ length: 6 }, () => H("10:00", "15:00", "16:00", "20:30")),
+  H("11:00", "15:00", "16:00", "19:00"),
+];
 
 const DEFAULT_SETTINGS = {
-  employes: [{ nom: "Belal N'DAO", boutique: "NOA", actif: true }],
-  pause: { active: true, debut: "15:00", fin: "16:00" },
+  employes: [{ nom: "Belal N'DAO", boutique: "NOA", actif: true, horaires: HORAIRES_DEFAUT }],
 };
 
 // ---------- Stockage local (protégé : peut échouer en navigation privée) ----------
@@ -46,6 +55,9 @@ const state = {
   remarques: store.get("fp.remarques", ""),
   photos: [], // File[]
 };
+// Réglages enregistrés par une version précédente : on ajoute les horaires habituels
+delete state.settings.pause;
+for (const e of state.settings.employes) e.horaires ||= structuredClone(HORAIRES_DEFAUT);
 
 function save() {
   store.set("fp.settings", state.settings);
@@ -132,14 +144,19 @@ function minutesTravaillees(e) {
   return total > 0 ? total : null;
 }
 
-function appliquerPauseParDefaut(e) {
-  const p = state.settings.pause;
-  if (!p?.active || e.statut !== "travail" || e.debut_pause || e.fin_pause) return e;
-  if (!e.arrivee || !e.depart || !p.debut || !p.fin) return e;
-  if (toMin(e.arrivee) <= toMin(p.debut) && toMin(e.depart) >= toMin(p.fin)) {
-    return { ...e, debut_pause: p.debut, fin_pause: p.fin };
+const VIDE = { arrivee: "", debut_pause: "", fin_pause: "", depart: "" };
+
+// Heures d'un jour travaillé : celles écrites sur le planning, sinon les horaires habituels du salarié.
+function heuresDuJour(emp, iso, arriveeLue = "", departLue = "") {
+  const type = emp?.horaires?.[dayIndex(fromISO(iso))] || VIDE;
+  const arrivee = arriveeLue || type.arrivee || "";
+  const depart = departLue || type.depart || "";
+  let pause = { debut_pause: "", fin_pause: "" };
+  if (type.debut_pause && type.fin_pause && arrivee && depart &&
+      toMin(arrivee) <= toMin(type.debut_pause) && toMin(depart) >= toMin(type.fin_pause)) {
+    pause = { debut_pause: type.debut_pause, fin_pause: type.fin_pause };
   }
-  return e;
+  return { arrivee, ...pause, depart };
 }
 
 // ---------- Noms ----------
@@ -186,14 +203,13 @@ const SCHEMA = {
             items: {
               type: "object",
               additionalProperties: false,
-              required: ["date", "statut", "arrivee", "debut_pause", "fin_pause", "depart", "incertain"],
+              required: ["date", "statut", "texte", "arrivee", "depart", "incertain"],
               properties: {
                 date: { type: "string", description: "Date au format YYYY-MM-DD" },
                 statut: { type: "string", enum: Object.keys(STATUTS) },
-                arrivee: { type: "string", description: "HH:MM sur 24 h, ou chaîne vide" },
-                debut_pause: { type: "string", description: "HH:MM sur 24 h, ou chaîne vide" },
-                fin_pause: { type: "string", description: "HH:MM sur 24 h, ou chaîne vide" },
-                depart: { type: "string", description: "HH:MM sur 24 h, ou chaîne vide" },
+                texte: { type: "string", description: "Ce qui est écrit dans la case, recopié tel quel" },
+                arrivee: { type: "string", description: "HH:MM sur 24 h si une heure est écrite, sinon chaîne vide" },
+                depart: { type: "string", description: "HH:MM sur 24 h si une heure est écrite, sinon chaîne vide" },
                 incertain: { type: "boolean" },
               },
             },
@@ -205,17 +221,33 @@ const SCHEMA = {
   },
 };
 
-const SYSTEM_PROMPT = `Tu lis des photos de plannings de boutique (souvent manuscrits) et tu en extrais les horaires de chaque salarié, jour par jour, pour remplir ensuite des feuilles de présence hebdomadaires.
+const SYSTEM_PROMPT = `Tu lis la photo du planning mensuel manuscrit d'une boutique, pour remplir ensuite la feuille de présence de chaque vendeur.
 
-Règles :
-- Une entrée par salarié et par jour visible sur le planning, y compris les jours de repos.
-- date : format YYYY-MM-DD. Déduis le mois et l'année des en-têtes du planning ; si l'année n'est écrite nulle part, prends celle qui place ces dates le plus près de la date du jour fournie.
-- Heures sur 24 h au format HH:MM. "10h" → "10:00", "20h30" → "20:30". En boutique, une heure de fin écrite "7" ou "8:30" après une arrivée le matin veut dire 19:00 ou 20:30.
-- debut_pause / fin_pause : seulement si la pause est indiquée sur le planning (par ex. "10h-15h / 16h-20h30" donne une pause de 15:00 à 16:00). Sinon laisse des chaînes vides : n'invente pas de pause.
-- statut : "travail" quand il y a des horaires ; "repos" pour R, Repos, OFF, une croix ou une case vide un jour sans horaires ; "conge" pour CP / congé ; "maladie" pour arrêt maladie ; "absent" pour une absence ; "autre" pour toute autre absence. Pour un jour sans travail, laisse toutes les heures vides.
-- Recopie les noms tels qu'écrits. Si un nom correspond à un salarié connu de la liste fournie, utilise exactement l'orthographe de la liste.
-- incertain : true si tu as dû deviner un chiffre, une date ou un nom difficile à lire.
-- remarques : en français, une ou deux phrases courtes sur ce qui était difficile à lire ou ambigu ; chaîne vide si tout est clair.`;
+Format habituel du planning :
+- En haut : "Magasin" et "Mois" (par exemple "Novembre 2026").
+- Une ligne par jour : colonne Date ("Le 1", "Le 2"…) et colonne JOUR (lundi, mardi…).
+- Colonnes "Vendeur 1" à "Vendeur 4" : le prénom du vendeur est écrit sous l'en-tête. Chaque case dit ce que fait ce vendeur ce jour-là.
+- Colonnes "Extra" : prénoms des personnes venues en renfort ce jour-là.
+- Colonne "Commentaires, Acomptes et Retards" : à ignorer.
+- La mention "Férié" dans la marge : à ignorer (les jours fériés sont calculés à part).
+
+Pour chaque vendeur, une entrée par jour du mois, avec le contenu de la case recopié dans texte :
+- "OK" → statut "travail".
+- "Repos" (souvent écrit en rouge) → "repos".
+- "CP" → "conge". "École" → "ecole". "Maladie" ou "AM" → "maladie". "Absent" ou "ABS" → "absent".
+- Un autre prénom écrit dans la case (par exemple "Shaily" dans la colonne de Maeva) → "remplace".
+- Toute autre mention (sigle, mot inconnu) → "autre".
+- Case vide → "repos" avec incertain = true.
+- arrivee / depart : seulement si des heures sont écrites dans la case (par exemple "10h-19h" donne "10:00" et "19:00"), au format HH:MM sur 24 h. Sinon chaîne vide : les horaires habituels sont ajoutés ensuite.
+
+Personnes en extra : pour chaque prénom écrit dans une colonne Extra, ajoute une entrée "travail" pour cette personne ce jour-là, sauf si elle a déjà une entrée ce jour-là dans sa propre colonne de vendeur. Jamais deux entrées pour la même personne le même jour.
+
+Si le planning a un autre format (par exemple des heures dans les cases), applique les mêmes statuts.
+
+- date : YYYY-MM-DD, à partir du numéro du jour et du mois écrit en haut. Vérifie que le jour de la semaine écrit correspond ; sinon, fais confiance au numéro et mets incertain = true. Si l'année n'est écrite nulle part, prends celle qui place ces dates le plus près de la date du jour fournie.
+- nom : le prénom tel qu'écrit ; s'il correspond à un salarié connu de la liste fournie, utilise exactement l'orthographe de la liste.
+- incertain : true si tu as dû deviner une case difficile à lire.
+- remarques : en français, une ou deux phrases courtes sur ce qui était difficile à lire ; chaîne vide si tout est clair.`;
 
 async function preparerImage(file) {
   const url = URL.createObjectURL(file);
@@ -293,23 +325,24 @@ function integrerResultat(result) {
     let emp = trouverSalarie(sal.nom);
     if (!emp) {
       // Nouveau salarié détecté : ajouté aux réglages, décoché par défaut.
-      emp = { nom: sal.nom.trim(), boutique: state.settings.employes[0]?.boutique || "", actif: false };
+      emp = {
+        nom: sal.nom.trim(),
+        boutique: state.settings.employes[0]?.boutique || "",
+        actif: false,
+        horaires: structuredClone(state.settings.employes[0]?.horaires || HORAIRES_DEFAUT),
+      };
       if (!emp.nom) continue;
       state.settings.employes.push(emp);
     }
     const jours = (state.planning[emp.nom] ||= {});
     for (const j of sal.jours || []) {
       if (!isISODate(j.date)) continue;
-      const statut = STATUTS[j.statut] ? j.statut : "travail";
-      let entree = {
-        statut,
-        arrivee: statut === "travail" ? normTime(j.arrivee) : "",
-        debut_pause: statut === "travail" ? normTime(j.debut_pause) : "",
-        fin_pause: statut === "travail" ? normTime(j.fin_pause) : "",
-        depart: statut === "travail" ? normTime(j.depart) : "",
-        incertain: !!j.incertain,
-      };
-      entree = appliquerPauseParDefaut(entree);
+      const statut = STATUTS[j.statut] ? j.statut : "autre";
+      const entree = { statut, ...VIDE, texte: String(j.texte || "").trim(), incertain: !!j.incertain };
+      if (statut === "travail") {
+        Object.assign(entree, heuresDuJour(emp, j.date, normTime(j.arrivee), normTime(j.depart)));
+        if (!entree.arrivee || !entree.depart) entree.incertain = true; // pas d'horaire habituel ce jour-là
+      }
       jours[j.date] = entree;
       if (emp.actif) dates.push(j.date);
     }
@@ -372,7 +405,10 @@ function htmlSemaine(jours, debut, fin, entrees) {
       i += span - 1;
       continue;
     } else if (e && e.statut !== "travail") {
-      cells = `<td>${court(d)}</td><td class="absence" colspan="5">${esc(ABSENCE_TEXTE[e.statut] || "ABSENCE")}</td>`;
+      const texte = e.statut in ABSENCE_TEXTE ? ABSENCE_TEXTE[e.statut] : (e.texte || "ABSENCE").toUpperCase();
+      cells = texte
+        ? `<td>${court(d)}</td><td class="absence" colspan="5">${esc(texte)}</td>`
+        : `<td>${court(d)}</td>` + `<td></td>`.repeat(5);
     } else {
       const total = minutesTravaillees(e);
       cells =
@@ -489,14 +525,18 @@ function onEditionHoraire(ev) {
   const { nom, date, field } = el.dataset;
   if (!nom || !date || !field) return;
   const jours = (state.planning[nom] ||= {});
-  const e = (jours[date] ||= { statut: "travail", arrivee: "", debut_pause: "", fin_pause: "", depart: "" });
+  const e = (jours[date] ||= { statut: "travail", ...VIDE });
   e[field] = field === "statut" ? el.value : normTime(el.value);
   e.incertain = false;
-  if (field === "statut" && e.statut !== "travail") {
-    e.arrivee = e.debut_pause = e.fin_pause = e.depart = "";
+  if (field === "statut") {
+    const emp = state.settings.employes.find((x) => x.nom === nom);
+    Object.assign(e, e.statut === "travail" ? heuresDuJour(emp, date) : VIDE);
   }
   save();
   const card = el.closest(".rev-day");
+  if (field === "statut") {
+    for (const input of card.querySelectorAll(".rev-times input")) input.value = e[input.dataset.field] || "";
+  }
   card.classList.remove("incertain");
   card.querySelector(".rev-times").classList.toggle("off", e.statut !== "travail");
   card.querySelector(".tot").textContent = affDuree(minutesTravaillees(e));
@@ -572,22 +612,39 @@ function rendreReglages() {
   list.innerHTML = state.settings.employes
     .map(
       (e, i) => `
-      <div class="emp-row" data-i="${i}">
-        <input type="checkbox" class="emp-actif" ${e.actif ? "checked" : ""} aria-label="Imprimer une fiche">
-        <input type="text" class="emp-nom" value="${esc(e.nom)}" placeholder="Nom" aria-label="Nom">
-        <input type="text" class="emp-boutique" value="${esc(e.boutique)}" placeholder="Boutique" aria-label="Boutique">
-        <button type="button" class="del" aria-label="Supprimer">×</button>
+      <div class="emp" data-i="${i}">
+        <div class="emp-row">
+          <input type="checkbox" class="emp-actif" ${e.actif ? "checked" : ""} aria-label="Imprimer une fiche">
+          <input type="text" class="emp-nom" value="${esc(e.nom)}" placeholder="Nom" aria-label="Nom">
+          <input type="text" class="emp-boutique" value="${esc(e.boutique)}" placeholder="Boutique" aria-label="Boutique">
+          <button type="button" class="del" aria-label="Supprimer">×</button>
+        </div>
+        <details class="emp-h">
+          <summary>Horaires habituels</summary>
+          <div class="h-grid">
+            <span></span><span>Arrivée</span><span>Pause</span><span>Reprise</span><span>Départ</span>
+            ${JOURS_COURTS.map(
+              (j, k) =>
+                `<span>${j}</span>` +
+                ["arrivee", "debut_pause", "fin_pause", "depart"]
+                  .map((f) => `<input type="time" data-k="${k}" data-f="${f}" value="${esc(e.horaires?.[k]?.[f] || "")}" aria-label="${j} ${f}">`)
+                  .join(""),
+            ).join("")}
+          </div>
+        </details>
       </div>`,
     )
     .join("");
-  const p = state.settings.pause;
-  document.getElementById("s-pause-on").checked = !!p.active;
-  document.getElementById("s-pause-debut").value = p.debut;
-  document.getElementById("s-pause-fin").value = p.fin;
+}
+
+function lireHoraires(div) {
+  const h = Array.from({ length: 7 }, () => ({ ...VIDE }));
+  for (const input of div.querySelectorAll(".h-grid input")) h[Number(input.dataset.k)][input.dataset.f] = input.value || "";
+  return h;
 }
 
 function lireReglages() {
-  const rows = [...document.querySelectorAll("#s-employes .emp-row")];
+  const rows = [...document.querySelectorAll("#s-employes .emp")];
   const anciens = state.settings.employes;
   const employes = rows
     .map((r) => ({
@@ -595,6 +652,7 @@ function lireReglages() {
       nom: r.querySelector(".emp-nom").value.trim(),
       boutique: r.querySelector(".emp-boutique").value.trim(),
       actif: r.querySelector(".emp-actif").checked,
+      horaires: lireHoraires(r),
     }))
     .filter((e) => e.nom);
   // Un salarié renommé garde ses horaires
@@ -606,30 +664,21 @@ function lireReglages() {
     delete e.ancien;
   }
   state.settings.employes = employes;
-  state.settings.pause = {
-    active: document.getElementById("s-pause-on").checked,
-    debut: document.getElementById("s-pause-debut").value || "15:00",
-    fin: document.getElementById("s-pause-fin").value || "16:00",
-  };
   state.apiKey = document.getElementById("s-apikey").value.trim();
 }
 
+// Exemple : la colonne de Belal sur le planning de novembre 2026, telle que la lecture doit la renvoyer.
 function chargerExemple() {
-  const t = (arrivee, depart, statut = "travail") =>
-    statut === "travail"
-      ? { statut, arrivee, debut_pause: "15:00", fin_pause: "16:00", depart }
-      : { statut, arrivee: "", debut_pause: "", fin_pause: "", depart: "" };
-  const L = () => t("10:00", "20:30"), D = () => t("11:00", "19:00"), R = () => t("", "", "repos");
   const nom = "Belal N'DAO";
-  if (!state.settings.employes.some((e) => e.nom === nom)) state.settings.employes.unshift({ nom, boutique: "NOA", actif: true });
-  state.planning[nom] = {
-    "2026-11-01": D(),
-    "2026-11-02": L(), "2026-11-03": L(), "2026-11-04": R(), "2026-11-05": R(), "2026-11-06": L(), "2026-11-07": L(), "2026-11-08": D(),
-    "2026-11-09": L(), "2026-11-10": L(), "2026-11-11": R(), "2026-11-12": R(), "2026-11-13": L(), "2026-11-14": L(), "2026-11-15": D(),
-  };
-  state.periode = { debut: "2026-11-01", fin: "2026-11-15" };
-  state.remarques = "";
-  save();
+  if (!state.settings.employes.some((e) => e.nom === nom)) {
+    state.settings.employes.unshift({ nom, boutique: "NOA", actif: true, horaires: structuredClone(HORAIRES_DEFAUT) });
+  }
+  const repos = new Set([5, 8, 11, 12, 18, 19, 26]);
+  const jours = Array.from({ length: 30 }, (_, i) => {
+    const r = repos.has(i + 1);
+    return { date: `2026-11-${pad(i + 1)}`, statut: r ? "repos" : "travail", texte: r ? "Repos" : "OK", arrivee: "", depart: "", incertain: false };
+  });
+  integrerResultat({ salaries: [{ nom: "BELAL", jours }], remarques: "" });
 }
 
 // ---------- Interface ----------
@@ -739,7 +788,12 @@ function init() {
   });
   $("s-add-emp").addEventListener("click", () => {
     lireReglages();
-    state.settings.employes.push({ nom: "", boutique: state.settings.employes[0]?.boutique || "", actif: true });
+    state.settings.employes.push({
+      nom: "",
+      boutique: state.settings.employes[0]?.boutique || "",
+      actif: true,
+      horaires: structuredClone(state.settings.employes[0]?.horaires || HORAIRES_DEFAUT),
+    });
     rendreReglages();
     const inputs = document.querySelectorAll("#s-employes .emp-nom");
     inputs[inputs.length - 1]?.focus();
@@ -747,7 +801,7 @@ function init() {
   $("s-employes").addEventListener("click", (ev) => {
     if (!ev.target.classList.contains("del")) return;
     lireReglages();
-    state.settings.employes.splice(Number(ev.target.closest(".emp-row").dataset.i), 1);
+    state.settings.employes.splice(Number(ev.target.closest(".emp").dataset.i), 1);
     rendreReglages();
   });
   $("s-exemple").addEventListener("click", () => {

@@ -15,9 +15,9 @@ Adresse une fois GitHub Pages activé : **https://mvtax.github.io/planning_belal
 
 ## Ce que fait l'appli
 
-- Lit la photo avec Claude (modèle `claude-opus-5-5`), récupère pour chaque salarié les heures d'arrivée, de pause, de départ, et les jours de repos / congé.
+- Lit la photo du planning mensuel avec Claude (modèle `claude-opus-5-5`) : pour chaque vendeur et chaque jour, « OK », « Repos », « CP », « École », remplacement…
+- « OK » → la fiche reprend les **horaires habituels** du salarié pour ce jour de la semaine (Réglages → Salariés → Horaires habituels). Belal : 10h–15h / 16h–20h30 du lundi au samedi, 11h–15h / 16h–19h le dimanche.
 - Remplit la fiche « FEUILLE DE PRESENCE HEBDOMADAIRE » : 3 semaines (lundi → dimanche) par page A4, totaux calculés, « REPOS » en rouge, jours fériés marqués automatiquement.
-- Pause par défaut (15h–16h) ajoutée si le planning ne l'indique pas (modifiable dans les réglages).
 - Salariés, boutique et horaires sont enregistrés sur le téléphone. Un nouveau nom lu sur le planning est ajouté aux réglages, décoché : il suffit de le cocher pour imprimer sa fiche.
 - Coût : quelques centimes par photo, facturés sur le compte Anthropic de la clé.
 
