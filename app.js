@@ -318,7 +318,7 @@ async function choisirModeleGemini(ai) {
 }
 
 async function lireAvecGemini(images) {
-  const { GoogleGenAI, ApiError } = await import("./vendor/gemini.js");
+  const { GoogleGenAI, ApiError } = await import("./vendor/gemini.js?v=5");
   const ai = new GoogleGenAI({ apiKey: state.geminiKey });
   const contents = [
     {
@@ -378,7 +378,7 @@ async function lireAvecGemini(images) {
 
 // ----- Claude (Anthropic) -----
 async function lireAvecClaude(images) {
-  const { Anthropic } = await import("./vendor/anthropic.js");
+  const { Anthropic } = await import("./vendor/anthropic.js?v=5");
   const client = new Anthropic({ apiKey: state.apiKey, dangerouslyAllowBrowser: true, maxRetries: 2 });
 
   let response;
@@ -641,7 +641,7 @@ function onEditionHoraire(ev) {
 
 // ---------- Impression / PDF ----------
 async function genererPDF() {
-  const { jsPDF, html2canvas } = await import("./vendor/pdf.js");
+  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=5");
   const sheets = [...document.querySelectorAll("#sheets .sheet")];
   // Rendu hors écran à taille réelle (sans la réduction de l'aperçu)
   const stage = document.createElement("div");
@@ -853,7 +853,7 @@ function init() {
   const dlg = $("settings");
 
   $("btn-scan").addEventListener("click", async () => {
-    const { openScanner } = await import("./scanner.js");
+    const { openScanner } = await import("./scanner.js?v=5");
     const { pages, finished } = await openScanner();
     if (!pages.length) return;
     state.photos.push(...pages);
