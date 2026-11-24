@@ -8,13 +8,14 @@ Adresse une fois GitHub Pages activé : **https://mvtax.github.io/planning_belal
 
 1. Ouvrir le lien dans Safari, puis Partager → **Sur l'écran d'accueil** (ou ajouter en favori).
 2. La première fois : ⚙︎ Réglages → coller la **clé API Claude** (console.anthropic.com → API Keys). Elle reste sur le téléphone.
-3. **Prendre / choisir une photo** du planning global → **Lire le planning et remplir les fiches**.
+3. **Scanner le planning** : la caméra s'ouvre en mode scan, la feuille est entourée en vert et prise automatiquement quand elle est stable (ou bouton rond). Ajuster les coins si besoin → **Valider** → **Utiliser ce scan**. La lecture démarre toute seule.
 4. Vérifier l'aperçu (les jours mal lus sont surlignés en orange dans « Vérifier / corriger les horaires »).
 5. **Imprimer** → choisir l'imprimante (AirPrint) → Imprimer.
    Depuis l'icône de l'écran d'accueil, le bouton ouvre le PDF dans la feuille de partage : choisir « Imprimer ».
 
 ## Ce que fait l'appli
 
+- Mode scan (`scanner.js`) : détection de la feuille en direct, prise automatique, recadrage, redressement de la perspective et fond blanchi en gardant les couleurs de l'encre. « + Page » pour scanner plusieurs feuilles, « Importer une photo » pour partir d'une photo existante.
 - Lit la photo du planning mensuel avec Claude (modèle `claude-opus-5-5`) : pour chaque vendeur et chaque jour, « OK », « Repos », « CP », « École », remplacement…
 - « OK » → la fiche reprend les **horaires habituels** du salarié pour ce jour de la semaine (Réglages → Salariés → Horaires habituels). Belal : 10h–15h / 16h–20h30 du lundi au samedi, 11h–15h / 16h–19h le dimanche.
 - Remplit la fiche « FEUILLE DE PRESENCE HEBDOMADAIRE » : 3 semaines (lundi → dimanche) par page A4, totaux calculés, « REPOS » en rouge, jours fériés marqués automatiquement.

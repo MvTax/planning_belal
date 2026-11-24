@@ -24,11 +24,10 @@
   <main class="no-print">
     <section class="card" id="step-photo">
       <h2>1. Photo du planning</h2>
-      <p class="hint">Prenez le planning global en photo (une ou plusieurs photos si besoin).</p>
-      <label class="big-btn primary" for="photo-input">Prendre / choisir une photo</label>
-      <input id="photo-input" type="file" accept="image/*" multiple hidden>
+      <p class="hint">Scannez le planning global : la feuille est détectée, recadrée et redressée automatiquement.</p>
+      <button id="btn-scan" class="big-btn primary" type="button">Scanner le planning</button>
       <div id="thumbs" class="thumbs"></div>
-      <button id="btn-analyser" class="big-btn" type="button" disabled>Lire le planning et remplir les fiches</button>
+      <button id="btn-analyser" class="big-btn" type="button" hidden>Lire le planning et remplir les fiches</button>
       <p id="status" class="status" role="status" aria-live="polite"></p>
       <p class="small"><a href="#" id="link-manuel">Ou remplir à la main, sans photo</a></p>
     </section>

@@ -258,7 +258,7 @@ async function preparerImage(file) {
       i.onerror = () => reject(new Error(`Impossible d'ouvrir la photo « ${file.name} ».`));
       i.src = url;
     });
-    const MAX = 2000;
+    const MAX = 2400;
     const scale = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
     const w = Math.round(img.naturalWidth * scale);
     const h = Math.round(img.naturalHeight * scale);
@@ -708,18 +708,50 @@ function rendreMiniatures() {
   thumbs.innerHTML = state.photos
     .map((f, i) => `<div class="thumb"><img alt="Photo ${i + 1}" src="${URL.createObjectURL(f)}"><button type="button" data-i="${i}" aria-label="Retirer">×</button></div>`)
     .join("");
-  document.getElementById("btn-analyser").disabled = state.photos.length === 0;
+  document.getElementById("btn-analyser").hidden = state.photos.length === 0;
+}
+
+async function lancerLecture() {
+  const $ = (id) => document.getElementById(id);
+  const dlg = $("settings");
+  if (!state.apiKey) {
+    setStatus("Ajoutez d'abord votre clé API Claude dans les réglages.", "error");
+    rendreReglages();
+    dlg.returnValue = "";
+    dlg.showModal();
+    return;
+  }
+  const btn = $("btn-analyser");
+  if (!state.photos.length || btn.disabled) return;
+  btn.disabled = true;
+  setStatus("Lecture du planning en cours… (30 s à 1 min)", "busy");
+  try {
+    const result = await lirePlanning(state.photos);
+    integrerResultat(result);
+    state.photos = [];
+    rendreMiniatures();
+    setStatus("Fiches remplies. Vérifiez l'aperçu puis imprimez.");
+    afficherResultat();
+    $("step-result").scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (err) {
+    setStatus(err.message || String(err), "error");
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 function init() {
   const $ = (id) => document.getElementById(id);
   const dlg = $("settings");
 
-  $("photo-input").addEventListener("change", (ev) => {
-    state.photos.push(...ev.target.files);
-    ev.target.value = "";
+  $("btn-scan").addEventListener("click", async () => {
+    const { openScanner } = await import("./scanner.js");
+    const { pages, finished } = await openScanner();
+    if (!pages.length) return;
+    state.photos.push(...pages);
     rendreMiniatures();
     setStatus("");
+    if (finished) lancerLecture(); // scan validé : on lit le planning tout de suite
   });
   $("thumbs").addEventListener("click", (ev) => {
     const i = ev.target.dataset?.i;
@@ -728,31 +760,7 @@ function init() {
     rendreMiniatures();
   });
 
-  $("btn-analyser").addEventListener("click", async () => {
-    if (!state.apiKey) {
-      setStatus("Ajoutez d'abord votre clé API Claude dans les réglages.", "error");
-      rendreReglages();
-      dlg.returnValue = "";
-      dlg.showModal();
-      return;
-    }
-    const btn = $("btn-analyser");
-    btn.disabled = true;
-    setStatus("Lecture du planning en cours… (30 s à 1 min)", "busy");
-    try {
-      const result = await lirePlanning(state.photos);
-      integrerResultat(result);
-      state.photos = [];
-      rendreMiniatures();
-      setStatus("Fiches remplies. Vérifiez l'aperçu puis imprimez.");
-      afficherResultat();
-      $("step-result").scrollIntoView({ behavior: "smooth", block: "start" });
-    } catch (err) {
-      setStatus(err.message || String(err), "error");
-    } finally {
-      btn.disabled = state.photos.length === 0;
-    }
-  });
+  $("btn-analyser").addEventListener("click", lancerLecture);
 
   $("link-manuel").addEventListener("click", (ev) => {
     ev.preventDefault();
@@ -824,6 +832,7 @@ function init() {
     lireReglages();
     save();
     afficherResultat();
+    if (state.apiKey && state.photos.length) lancerLecture(); // clé ajoutée juste après un scan
   });
 
   let t;
