@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Fiches de présence</title>
+  <meta name="description" content="Photo du planning → fiches de présence hebdomadaires remplies, prêtes à imprimer.">
+  <meta name="theme-color" content="#1d3b8f">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="apple-mobile-web-app-title" content="Fiches">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="topbar no-print">
+    <h1>Fiches de présence</h1>
+    <button id="btn-settings" class="icon-btn" type="button" aria-label="Réglages">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>
+    </button>
+  </header>
+
+  <main class="no-print">
+    <section class="card" id="step-photo">
+      <h2>1. Photo du planning</h2>
+      <p class="hint">Prenez le planning global en photo (une ou plusieurs photos si besoin).</p>
+      <label class="big-btn primary" for="photo-input">Prendre / choisir une photo</label>
+      <input id="photo-input" type="file" accept="image/*" multiple hidden>
+      <div id="thumbs" class="thumbs"></div>
+      <button id="btn-analyser" class="big-btn" type="button" disabled>Lire le planning et remplir les fiches</button>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+      <p class="small"><a href="#" id="link-manuel">Ou remplir à la main, sans photo</a></p>
+    </section>
+
+    <section class="card" id="step-result" hidden>
+      <h2>2. Fiches prêtes</h2>
+      <div class="actions">
+        <button id="btn-print" class="big-btn primary" type="button">Imprimer</button>
+        <button id="btn-pdf" class="big-btn" type="button">Enregistrer / partager en PDF</button>
+      </div>
+      <div class="period">
+        <label>Du <input type="date" id="p-debut"></label>
+        <label>au <input type="date" id="p-fin"></label>
+      </div>
+      <p id="remarques" class="remarques" hidden></p>
+      <details id="review">
+        <summary>Vérifier / corriger les horaires</summary>
+        <div id="review-body"></div>
+      </details>
+    </section>
+  </main>
+
+  <div id="sheets" aria-label="Aperçu des fiches"></div>
+
+  <dialog id="settings" class="no-print">
+    <form method="dialog" id="settings-form">
+      <h2>Réglages</h2>
+
+      <fieldset>
+        <legend>Clé API Claude</legend>
+        <p class="small">Nécessaire pour lire les photos. Créez-la sur console.anthropic.com → API Keys. Elle reste uniquement sur ce téléphone.</p>
+        <input type="password" id="s-apikey" autocomplete="off" placeholder="sk-ant-…" spellcheck="false">
+      </fieldset>
+
+      <fieldset>
+        <legend>Salariés</legend>
+        <p class="small">Seuls les salariés cochés reçoivent une fiche.</p>
+        <div id="s-employes"></div>
+        <button type="button" id="s-add-emp" class="link-btn">+ Ajouter un salarié</button>
+      </fieldset>
+
+      <fieldset>
+        <legend>Pause par défaut</legend>
+        <label class="check"><input type="checkbox" id="s-pause-on"> Ajouter la pause si le planning ne l'indique pas</label>
+        <div class="row2">
+          <label>De <input type="time" id="s-pause-debut"></label>
+          <label>à <input type="time" id="s-pause-fin"></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Données</legend>
+        <button type="button" id="s-exemple" class="link-btn">Charger l'exemple (Belal, 1 au 15 novembre 2026)</button>
+        <button type="button" id="s-clear" class="link-btn danger">Effacer tous les horaires enregistrés</button>
+      </fieldset>
+
+      <div class="dialog-actions">
+        <button value="cancel" type="submit" class="big-btn">Annuler</button>
+        <button value="save" type="submit" class="big-btn primary" id="s-save">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>
