@@ -23,8 +23,24 @@ const store = {
   },
 };
 
-export function openScanner() {
-  return new Promise((resolve) => new Scanner(resolve).start());
+// options.image : adresse d'une photo à utiliser à la place de la caméra (simulation)
+export function openScanner(options = {}) {
+  return new Promise((resolve) => new Scanner(resolve, options).start());
+}
+
+async function chargerImage(src) {
+  const img = await new Promise((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i);
+    i.onerror = () => rej(new Error("Photo illisible"));
+    i.src = src;
+  });
+  const k = Math.min(1, 4000 / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = document.createElement("canvas");
+  c.width = Math.round(img.naturalWidth * k);
+  c.height = Math.round(img.naturalHeight * k);
+  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+  return c;
 }
 
 // ---------------------------------------------------------------------------
@@ -293,8 +309,9 @@ function fit(boxW, boxH, w, h) {
 
 // ---------------------------------------------------------------------------
 class Scanner {
-  constructor(done) {
+  constructor(done, options = {}) {
     this.done = done;
+    this.simulation = options.image || null;
     this.pages = [];
     this.auto = store.get("fp.scan.auto", true);
     this.history = [];
@@ -352,6 +369,17 @@ class Scanner {
     document.body.appendChild(this.el);
     document.documentElement.classList.add("scan-open");
     this.updateAutoChip();
+    if (this.simulation) {
+      // Simulation : pas de caméra, on part directement de la photo de test
+      try {
+        this.simCanvas = await chargerImage(this.simulation);
+        this.openEdit(this.simCanvas);
+      } catch {
+        this.show("live");
+        this.hint("Photo de test introuvable.");
+      }
+      return;
+    }
     this.show("live");
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
@@ -459,18 +487,7 @@ class Scanner {
     if (!file) return;
     const url = URL.createObjectURL(file);
     try {
-      const img = await new Promise((res, rej) => {
-        const i = new Image();
-        i.onload = () => res(i);
-        i.onerror = () => rej(new Error("Photo illisible"));
-        i.src = url;
-      });
-      const k = Math.min(1, 4000 / Math.max(img.naturalWidth, img.naturalHeight));
-      const c = document.createElement("canvas");
-      c.width = Math.round(img.naturalWidth * k);
-      c.height = Math.round(img.naturalHeight * k);
-      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-      this.openEdit(c);
+      this.openEdit(await chargerImage(url));
     } catch (err) {
       this.hint(err.message);
     } finally {
@@ -627,6 +644,10 @@ class Scanner {
   }
 
   backToLive() {
+    if (this.simulation) {
+      this.openEdit(this.simCanvas);
+      return;
+    }
     this.history = [];
     this.liveQuad = null;
     this.cooldownUntil = Date.now() + 2500;
@@ -652,6 +673,11 @@ class Scanner {
         this.close(true);
         break;
       case "retake":
+        if (this.simulation) {
+          this.close(false);
+          break;
+        }
+      // falls through
       case "redo":
         this.capture = this.result = null;
         this.backToLive();

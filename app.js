@@ -318,7 +318,7 @@ async function choisirModeleGemini(ai) {
 }
 
 async function lireAvecGemini(images) {
-  const { GoogleGenAI, ApiError } = await import("./vendor/gemini.js?v=5");
+  const { GoogleGenAI, ApiError } = await import("./vendor/gemini.js?v=6");
   const ai = new GoogleGenAI({ apiKey: state.geminiKey });
   const contents = [
     {
@@ -378,7 +378,7 @@ async function lireAvecGemini(images) {
 
 // ----- Claude (Anthropic) -----
 async function lireAvecClaude(images) {
-  const { Anthropic } = await import("./vendor/anthropic.js?v=5");
+  const { Anthropic } = await import("./vendor/anthropic.js?v=6");
   const client = new Anthropic({ apiKey: state.apiKey, dangerouslyAllowBrowser: true, maxRetries: 2 });
 
   let response;
@@ -641,7 +641,7 @@ function onEditionHoraire(ev) {
 
 // ---------- Impression / PDF ----------
 async function genererPDF() {
-  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=5");
+  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=6");
   const sheets = [...document.querySelectorAll("#sheets .sheet")];
   // Rendu hors écran à taille réelle (sans la réduction de l'aperçu)
   const stage = document.createElement("div");
@@ -852,15 +852,18 @@ function init() {
   const $ = (id) => document.getElementById(id);
   const dlg = $("settings");
 
-  $("btn-scan").addEventListener("click", async () => {
-    const { openScanner } = await import("./scanner.js?v=5");
-    const { pages, finished } = await openScanner();
+  // Scan réel (caméra) ou simulation avec la photo du planning de novembre 2026
+  const scanner = async (options) => {
+    const { openScanner } = await import("./scanner.js?v=6");
+    const { pages, finished } = await openScanner(options);
     if (!pages.length) return;
     state.photos.push(...pages);
     rendreMiniatures();
     setStatus("");
     if (finished) lancerLecture(); // scan validé : on lit le planning tout de suite
-  });
+  };
+  $("btn-scan").addEventListener("click", () => scanner());
+  $("btn-simulation").addEventListener("click", () => scanner({ image: "test/planning-novembre-2026.jpg?v=6" }));
   $("thumbs").addEventListener("click", (ev) => {
     const i = ev.target.dataset?.i;
     if (i == null) return;
