@@ -2,6 +2,7 @@
 // Tout tourne dans le navigateur ; les données restent sur le téléphone (localStorage).
 
 const MODEL = "claude-opus-5-5";
+const DELAI_MAX_MS = 75000; // au-delà, on arrête et on affiche un message
 const GEMINI_DEFAUT = "gemini-3.8-flash"; // utilisé seulement si la liste des modèles est inaccessible
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const JOURS_COURTS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -190,69 +191,94 @@ function trouverSalarie(nomLu) {
 }
 
 // ---------- Lecture de la photo (Gemini ou Claude) ----------
+// Réponse compacte (rapide à produire) : le contenu brut de chaque case, interprété ensuite ici.
 const SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["salaries", "remarques"],
+  required: ["dates", "vendeurs", "extras", "remarques"],
   properties: {
-    salaries: {
+    dates: { type: "array", items: { type: "string" }, description: "Date de chaque ligne du planning, YYYY-MM-DD, dans l'ordre" },
+    vendeurs: {
       type: "array",
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["nom", "jours"],
+        required: ["nom", "cases"],
         properties: {
           nom: { type: "string" },
-          jours: {
-            type: "array",
-            items: {
-              type: "object",
-              additionalProperties: false,
-              required: ["date", "statut", "texte", "arrivee", "depart", "incertain"],
-              properties: {
-                date: { type: "string", description: "Date au format YYYY-MM-DD" },
-                statut: { type: "string", enum: Object.keys(STATUTS) },
-                texte: { type: "string", description: "Ce qui est écrit dans la case, recopié tel quel" },
-                arrivee: { type: "string", description: "HH:MM sur 24 h si une heure est écrite, sinon chaîne vide" },
-                depart: { type: "string", description: "HH:MM sur 24 h si une heure est écrite, sinon chaîne vide" },
-                incertain: { type: "boolean" },
-              },
-            },
-          },
+          cases: { type: "array", items: { type: "string" }, description: "Texte de la case pour chaque ligne, même ordre que dates" },
         },
+      },
+    },
+    extras: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["date", "noms"],
+        properties: { date: { type: "string" }, noms: { type: "array", items: { type: "string" } } },
       },
     },
     remarques: { type: "string" },
   },
 };
 
-const SYSTEM_PROMPT = `Tu lis la photo du planning mensuel manuscrit d'une boutique, pour remplir ensuite la feuille de présence de chaque vendeur.
+const SYSTEM_PROMPT = `Tu recopies le planning mensuel manuscrit d'une boutique (photo), case par case. Sois rapide et factuel.
 
-Format habituel du planning :
-- En haut : "Magasin" et "Mois" (par exemple "Novembre 2026").
-- Une ligne par jour : colonne Date ("Le 1", "Le 2"…) et colonne JOUR (lundi, mardi…).
-- Colonnes "Vendeur 1" à "Vendeur 4" : le prénom du vendeur est écrit sous l'en-tête. Chaque case dit ce que fait ce vendeur ce jour-là.
-- Colonnes "Extra" : prénoms des personnes venues en renfort ce jour-là.
-- Colonne "Commentaires, Acomptes et Retards" : à ignorer.
-- La mention "Férié" dans la marge : à ignorer (les jours fériés sont calculés à part).
+Le planning : en haut "Magasin" et "Mois" (ex. "Novembre 2026") ; une ligne par jour ("Le 1", "Le 2"… et le jour de la semaine) ; colonnes "Vendeur 1" à "Vendeur 4" avec le prénom du vendeur écrit sous l'en-tête ; colonnes "Extra" avec les prénoms des renforts du jour ; colonne "Commentaires" à ignorer ; mention "Férié" dans la marge à ignorer.
 
-Pour chaque vendeur, une entrée par jour du mois, avec le contenu de la case recopié dans texte :
-- "OK" → statut "travail".
-- "Repos" (souvent écrit en rouge) → "repos".
-- "CP" → "conge". "École" → "ecole". "Maladie" ou "AM" → "maladie". "Absent" ou "ABS" → "absent".
-- Un autre prénom écrit dans la case (par exemple "Shaily" dans la colonne de Maeva) → "remplace".
-- Toute autre mention (sigle, mot inconnu) → "autre".
-- Case vide → "repos" avec incertain = true.
-- arrivee / depart : seulement si des heures sont écrites dans la case (par exemple "10h-19h" donne "10:00" et "19:00"), au format HH:MM sur 24 h. Sinon chaîne vide : les horaires habituels sont ajoutés ensuite.
+Renvoie :
+- dates : la date de chaque ligne au format YYYY-MM-DD (numéro du jour + mois et année écrits en haut ; année absente → la plus proche de la date du jour fournie).
+- vendeurs : pour chaque colonne Vendeur, nom = le prénom écrit sous l'en-tête (orthographe de la liste des salariés connus s'il y correspond), cases = le texte de sa case pour chaque ligne, dans le même ordre que dates. Recopie tel quel et court : "OK", "Repos", "CP", "École", un prénom, "MMS", "10h-19h"… Case vide → "". Si tu n'es pas sûr de ta lecture, ajoute "?" à la fin (ex. "OK?").
+- extras : pour chaque ligne qui a des prénoms dans les colonnes Extra, la date et ces prénoms.
+- remarques : une phrase courte en français sur ce qui était difficile à lire, sinon "".`;
 
-Personnes en extra : pour chaque prénom écrit dans une colonne Extra, ajoute une entrée "travail" pour cette personne ce jour-là, sauf si elle a déjà une entrée ce jour-là dans sa propre colonne de vendeur. Jamais deux entrées pour la même personne le même jour.
+// Interprète le texte d'une case du planning
+function interpreterCase(brut) {
+  const texte = String(brut || "").trim();
+  const incertain = texte.endsWith("?") || texte === "";
+  const t = normNom(texte.replace(/\?+$/, ""));
+  const e = { statut: "autre", texte: texte.replace(/\?+$/, "").trim(), arrivee: "", depart: "", incertain };
+  if (!t) return { ...e, statut: "repos" };
+  const h = texte.match(/(\d{1,2})\s*[h:.]?\s*(\d{2})?\s*(?:-|à|a|\/)\s*(\d{1,2})\s*[h:.]?\s*(\d{2})?/i);
+  if (h) {
+    let fin = Number(h[3]);
+    if (fin < 12 && fin < Number(h[1])) fin += 12; // "10-7" → 19h
+    return { ...e, statut: "travail", arrivee: normTime(`${h[1]}:${h[2] || "00"}`), depart: normTime(`${fin}:${h[4] || "00"}`) };
+  }
+  if (/^ok\b|^o k$|^v$|^x$/.test(t) || texte.includes("✓")) return { ...e, statut: "travail" };
+  if (/^repos|^rep\b|^r$|^off\b/.test(t)) return { ...e, statut: "repos" };
+  if (/^cp\b|^c p$|conge/.test(t)) return { ...e, statut: "conge" };
+  if (/ecole|^ec\b/.test(t)) return { ...e, statut: "ecole" };
+  if (/maladie|^am\b|arret/.test(t)) return { ...e, statut: "maladie" };
+  if (/^abs/.test(t)) return { ...e, statut: "absent" };
+  if (/^[a-z]+( [a-z]+)?$/.test(t) && t.length >= 4) return { ...e, statut: "remplace" }; // un prénom
+  return e;
+}
 
-Si le planning a un autre format (par exemple des heures dans les cases), applique les mêmes statuts.
-
-- date : YYYY-MM-DD, à partir du numéro du jour et du mois écrit en haut. Vérifie que le jour de la semaine écrit correspond ; sinon, fais confiance au numéro et mets incertain = true. Si l'année n'est écrite nulle part, prends celle qui place ces dates le plus près de la date du jour fournie.
-- nom : le prénom tel qu'écrit ; s'il correspond à un salarié connu de la liste fournie, utilise exactement l'orthographe de la liste.
-- incertain : true si tu as dû deviner une case difficile à lire.
-- remarques : en français, une ou deux phrases courtes sur ce qui était difficile à lire ; chaîne vide si tout est clair.`;
+// Convertit la réponse compacte en entrées par salarié et par jour
+function convertirLecture(lu) {
+  const dates = (lu.dates || []).map((d) => String(d).trim());
+  const salaries = new Map();
+  const ajouter = (nom, date, entree) => {
+    const cle = normNom(nom);
+    if (!cle || !isISODate(date)) return;
+    if (!salaries.has(cle)) salaries.set(cle, { nom: nom.trim(), jours: new Map() });
+    const s = salaries.get(cle);
+    if (!s.jours.has(date)) s.jours.set(date, { date, ...entree });
+  };
+  for (const v of lu.vendeurs || []) {
+    (v.cases || []).forEach((c, i) => ajouter(v.nom, dates[i], interpreterCase(c)));
+  }
+  // Renforts : une journée travaillée, sauf si la personne a déjà une case ce jour-là
+  for (const x of lu.extras || []) {
+    for (const nom of x.noms || []) ajouter(nom, String(x.date).trim(), { statut: "travail", texte: "Extra", arrivee: "", depart: "", incertain: false });
+  }
+  return {
+    salaries: [...salaries.values()].map((s) => ({ nom: s.nom, jours: [...s.jours.values()] })),
+    remarques: lu.remarques || "",
+  };
+}
 
 async function preparerImage(file) {
   const url = URL.createObjectURL(file);
@@ -263,7 +289,7 @@ async function preparerImage(file) {
       i.onerror = () => reject(new Error(`Impossible d'ouvrir la photo « ${file.name} ».`));
       i.src = url;
     });
-    const MAX = 2400;
+    const MAX = 2000;
     const scale = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
     const w = Math.round(img.naturalWidth * scale);
     const h = Math.round(img.naturalHeight * scale);
@@ -279,7 +305,7 @@ async function preparerImage(file) {
 
 function consigneUtilisateur() {
   const connus = state.settings.employes.map((e) => `${e.nom} (boutique ${e.boutique})`).join(", ");
-  return `Date du jour : ${toISO(new Date())}.\nSalariés connus : ${connus || "aucun"}.\nLis ce planning et renvoie ce que fait chaque salarié pour chaque jour visible.`;
+  return `Date du jour : ${toISO(new Date())}.\nSalariés connus : ${connus || "aucun"}.\nRecopie ce planning.`;
 }
 
 function analyserJSON(text) {
@@ -318,8 +344,12 @@ async function choisirModeleGemini(ai) {
 }
 
 async function lireAvecGemini(images) {
-  const { GoogleGenAI, ApiError } = await import("./vendor/gemini.js?v=6");
-  const ai = new GoogleGenAI({ apiKey: state.geminiKey });
+  const { GoogleGenAI, ApiError } = await import("./vendor/gemini.js?v=7");
+  // Pas de longues relances silencieuses : 1 nouvel essai maximum, et une limite de temps
+  const ai = new GoogleGenAI({
+    apiKey: state.geminiKey,
+    httpOptions: { timeout: DELAI_MAX_MS, retryOptions: { attempts: 2, initialDelay: 1, maxDelay: 3 } },
+  });
   const contents = [
     {
       role: "user",
@@ -329,7 +359,7 @@ async function lireAvecGemini(images) {
   const base = { systemInstruction: SYSTEM_PROMPT, responseMimeType: "application/json" };
   // Du plus complet au plus simple, au cas où un modèle refuse une option
   const essais = [
-    { ...base, responseJsonSchema: SCHEMA, thinkingConfig: { thinkingLevel: "HIGH" } },
+    { ...base, responseJsonSchema: SCHEMA, thinkingConfig: { thinkingLevel: "LOW" } },
     { ...base, responseJsonSchema: SCHEMA },
     base,
   ];
@@ -339,6 +369,8 @@ async function lireAvecGemini(images) {
     if (/API key not valid|API_KEY_INVALID|api key/i.test(msg) && err?.status === 400) return new Error("Clé API Gemini refusée. Vérifiez-la dans les réglages (⚙︎).");
     if (err?.status === 403) return new Error("Cette clé Gemini n'a pas accès au service. Vérifiez-la sur aistudio.google.com.");
     if (err?.status === 429) return new Error("Quota Gemini atteint. Réessayez dans une minute (ou plus tard dans la journée).");
+    if (/abort|timeout/i.test(`${err?.name} ${msg}`)) return new Error("Gemini met trop de temps à répondre (service chargé). Réessayez dans un instant.");
+    if (err?.status === 503 || err?.status === 500) return new Error("Le service Gemini est surchargé en ce moment. Réessayez dans une minute.");
     if (err instanceof TypeError) return new Error("Pas de connexion internet. Réessayez.");
     return new Error(`Erreur Gemini (${err?.status ?? "?"}) : ${msg.slice(0, 200)}`);
   };
@@ -373,13 +405,13 @@ async function lireAvecGemini(images) {
   if (fin === "MAX_TOKENS") throw new Error("Le planning est trop long pour une seule lecture. Scannez-le en plusieurs pages.");
   if (fin && fin !== "STOP") throw new Error("La photo n'a pas pu être analysée. Reprenez le scan du planning.");
   state.dernierModele = model;
-  return analyserJSON(response.text);
+  return convertirLecture(analyserJSON(response.text));
 }
 
 // ----- Claude (Anthropic) -----
 async function lireAvecClaude(images) {
-  const { Anthropic } = await import("./vendor/anthropic.js?v=6");
-  const client = new Anthropic({ apiKey: state.apiKey, dangerouslyAllowBrowser: true, maxRetries: 2 });
+  const { Anthropic } = await import("./vendor/anthropic.js?v=7");
+  const client = new Anthropic({ apiKey: state.apiKey, dangerouslyAllowBrowser: true, maxRetries: 1, timeout: DELAI_MAX_MS });
 
   let response;
   try {
@@ -388,7 +420,7 @@ async function lireAvecClaude(images) {
       max_tokens: 16000,
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
-      output_config: { effort: "high", format: { type: "json_schema", schema: SCHEMA } },
+      output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
       system: SYSTEM_PROMPT,
       messages: [
         {
@@ -404,6 +436,7 @@ async function lireAvecClaude(images) {
     if (err instanceof Anthropic.AuthenticationError) throw new Error("Clé API Claude refusée. Vérifiez-la dans les réglages (⚙︎).");
     if (err instanceof Anthropic.PermissionDeniedError) throw new Error("Cette clé API n'a pas accès au modèle. Vérifiez votre compte Anthropic.");
     if (err instanceof Anthropic.RateLimitError) throw new Error("Trop de demandes ou crédit épuisé. Réessayez dans une minute ou vérifiez votre crédit Anthropic.");
+    if (err instanceof Anthropic.APIConnectionTimeoutError) throw new Error("Claude met trop de temps à répondre. Réessayez dans un instant.");
     if (err instanceof Anthropic.APIConnectionError) throw new Error("Pas de connexion internet. Réessayez.");
     if (err instanceof Anthropic.APIError) throw new Error(`Erreur du service (${err.status ?? "?"}) : ${err.message}`);
     throw err;
@@ -412,7 +445,7 @@ async function lireAvecClaude(images) {
   if (response.stop_reason === "refusal") throw new Error("La photo n'a pas pu être analysée. Reprenez le scan du planning.");
   if (response.stop_reason === "max_tokens") throw new Error("Le planning est trop long pour une seule lecture. Scannez-le en plusieurs pages.");
   state.dernierModele = MODEL;
-  return analyserJSON(response.content.filter((b) => b.type === "text").map((b) => b.text).join(""));
+  return convertirLecture(analyserJSON(response.content.filter((b) => b.type === "text").map((b) => b.text).join("")));
 }
 
 function integrerResultat(result) {
@@ -641,7 +674,7 @@ function onEditionHoraire(ev) {
 
 // ---------- Impression / PDF ----------
 async function genererPDF() {
-  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=6");
+  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=7");
   const sheets = [...document.querySelectorAll("#sheets .sheet")];
   // Rendu hors écran à taille réelle (sans la réduction de l'aperçu)
   const stage = document.createElement("div");
@@ -832,18 +865,22 @@ async function lancerLecture() {
   const btn = $("btn-analyser");
   if (!state.photos.length || btn.disabled) return;
   btn.disabled = true;
-  setStatus("Lecture du planning en cours… (30 s à 1 min)", "busy");
+  const debut = Date.now();
+  const tic = () => setStatus(`Lecture du planning en cours… ${Math.round((Date.now() - debut) / 1000)} s`, "busy");
+  tic();
+  const compteur = setInterval(tic, 1000);
   try {
     const result = await lirePlanning(state.photos);
     integrerResultat(result);
     state.photos = [];
     rendreMiniatures();
-    setStatus(`Fiches remplies (lu avec ${state.dernierModele}). Vérifiez l'aperçu puis imprimez.`);
+    setStatus(`Fiches remplies en ${Math.round((Date.now() - debut) / 1000)} s (lu avec ${state.dernierModele}). Vérifiez l'aperçu puis imprimez.`);
     afficherResultat();
     $("step-result").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (err) {
     setStatus(err.message || String(err), "error");
   } finally {
+    clearInterval(compteur);
     btn.disabled = false;
   }
 }
@@ -854,7 +891,7 @@ function init() {
 
   // Scan réel (caméra) ou simulation avec la photo du planning de novembre 2026
   const scanner = async (options) => {
-    const { openScanner } = await import("./scanner.js?v=6");
+    const { openScanner } = await import("./scanner.js?v=7");
     const { pages, finished } = await openScanner(options);
     if (!pages.length) return;
     state.photos.push(...pages);
@@ -863,7 +900,7 @@ function init() {
     if (finished) lancerLecture(); // scan validé : on lit le planning tout de suite
   };
   $("btn-scan").addEventListener("click", () => scanner());
-  $("btn-simulation").addEventListener("click", () => scanner({ image: "test/planning-novembre-2026.jpg?v=6" }));
+  $("btn-simulation").addEventListener("click", () => scanner({ image: "test/planning-novembre-2026.jpg?v=7" }));
   $("thumbs").addEventListener("click", (ev) => {
     const i = ev.target.dataset?.i;
     if (i == null) return;
