@@ -679,3 +679,35 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--bleu); width: 
 .pl-annee { display: block; font-size: calc(13px * var(--t)); font-weight: 600; color: var(--rouge); letter-spacing: .02em; margin-bottom: 1px; }
 .pl-puce { font-size: min(calc(15px * var(--t)), 3.9vw); letter-spacing: -.03em; }
 .pl-nom { font-size: min(calc(13.5px * var(--t)), 3.6vw); }
+
+/* ---- Boutons du haut : une pastille de verre pour ‹ ›, un bouton rond pour les réglages ---- */
+.pl-barre { gap: 10px; align-items: flex-end; padding-bottom: 6px; }
+.pl-nav {
+  display: flex; align-items: stretch; flex: none; height: 42px; border-radius: 21px; overflow: hidden;
+  background: rgba(255, 255, 255, .72);
+  -webkit-backdrop-filter: saturate(180%) blur(16px); backdrop-filter: saturate(180%) blur(16px);
+  box-shadow: 0 0 0 .5px rgba(60, 60, 67, .16), 0 2px 8px rgba(0, 0, 0, .06);
+}
+.pl-nav .pl-btn {
+  width: 46px; height: 100%; border-radius: 0; background: transparent; color: var(--bleu);
+  display: grid; place-items: center; margin: 0; font-size: 0; position: relative;
+  transition: background .15s ease, transform .12s ease;
+}
+.pl-nav .pl-btn::after { content: none; }
+.pl-nav .pl-btn + .pl-btn::before {
+  content: ""; position: absolute; left: 0; top: 11px; bottom: 11px; width: .5px; background: rgba(60, 60, 67, .25);
+}
+.pl-nav .pl-btn:active { background: rgba(0, 122, 255, .14); transform: none; }
+.pl-nav .pl-btn svg { transition: transform .12s ease; }
+.pl-nav .pl-btn:active svg { transform: scale(.88); }
+.pl-engrenage {
+  order: 3; flex: none; width: 42px; height: 42px; margin: 0; border: 0; border-radius: 50%; padding: 0;
+  display: grid; place-items: center; color: #3a3a3c; font-size: 0;
+  background: rgba(255, 255, 255, .72);
+  -webkit-backdrop-filter: saturate(180%) blur(16px); backdrop-filter: saturate(180%) blur(16px);
+  box-shadow: 0 0 0 .5px rgba(60, 60, 67, .16), 0 2px 8px rgba(0, 0, 0, .06);
+  transition: background .15s ease, transform .12s ease;
+}
+.pl-engrenage:active { background: rgba(60, 60, 67, .14); transform: scale(.94); }
+.pl-nav { order: 1; }
+#pl-suiv { margin-left: 0; }

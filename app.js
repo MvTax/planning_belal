@@ -1,6 +1,6 @@
 // Planning boutique — planning du mois en quelques gestes → fiches de présence remplies → impression.
 // Tout tourne dans le navigateur ; les données restent sur le téléphone (localStorage).
-import { initPlanning, joursDuMois } from "./planning.js?v=13";
+import { initPlanning, joursDuMois } from "./planning.js?v=14";
 
 const MODEL = "claude-opus-5-5";
 const DELAI_MAX_MS = 75000; // au-delà, on arrête et on affiche un message
@@ -365,7 +365,7 @@ function datesDuMois(mois) {
 }
 
 async function lireSurLeTelephone(file) {
-  const { lireSurTelephone } = await import("./lecteur.js?v=13");
+  const { lireSurTelephone } = await import("./lecteur.js?v=14");
   const colonnes = state.settings.employes
     .filter((e) => e.colonne >= 1 && e.colonne <= 4)
     .map((e) => ({ nom: e.nom, colonne: Number(e.colonne) }));
@@ -419,7 +419,7 @@ async function choisirModelesGemini(ai) {
 }
 
 async function lireAvecGemini(images) {
-  const { GoogleGenAI, ApiError } = await import("./vendor/gemini.js?v=13");
+  const { GoogleGenAI, ApiError } = await import("./vendor/gemini.js?v=14");
   // Pas de longues relances silencieuses : 1 nouvel essai maximum, et une limite de temps
   const ai = new GoogleGenAI({
     apiKey: state.geminiKey,
@@ -489,7 +489,7 @@ async function lireAvecGemini(images) {
 
 // ----- Claude (Anthropic) -----
 async function lireAvecClaude(images) {
-  const { Anthropic } = await import("./vendor/anthropic.js?v=13");
+  const { Anthropic } = await import("./vendor/anthropic.js?v=14");
   const client = new Anthropic({ apiKey: state.apiKey, dangerouslyAllowBrowser: true, maxRetries: 1, timeout: DELAI_MAX_MS });
 
   let response;
@@ -754,7 +754,7 @@ function onEditionHoraire(ev) {
 
 // ---------- Impression / PDF ----------
 async function genererPDF() {
-  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=13");
+  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=14");
   const sheets = [...document.querySelectorAll("#sheets .sheet")];
   // Rendu hors écran à taille réelle (sans la réduction de l'aperçu)
   const stage = document.createElement("div");
@@ -1059,7 +1059,7 @@ function init() {
 
   // Scan réel (caméra) ou simulation avec la photo du planning de novembre 2026
   const scanner = async (options) => {
-    const { openScanner } = await import("./scanner.js?v=13");
+    const { openScanner } = await import("./scanner.js?v=14");
     const { pages, finished } = await openScanner(options);
     if (!pages.length) return;
     state.photos.push(...pages);
@@ -1078,7 +1078,7 @@ function init() {
   $("btn-simulation").addEventListener("click", () => {
     state.mois = $("mois").value = "2026-11"; // la photo de test est le planning de novembre 2026
     save();
-    scanner({ image: "test/planning-novembre-2026.jpg?v=13" });
+    scanner({ image: "test/planning-novembre-2026.jpg?v=14" });
   });
   $("thumbs").addEventListener("click", (ev) => {
     const i = ev.target.dataset?.i;

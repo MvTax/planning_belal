@@ -10,17 +10,19 @@
   <link rel="icon" type="image/png" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <meta name="apple-mobile-web-app-title" content="Planning">
-  <link rel="stylesheet" href="styles.css?v=13">
-  <script type="module" src="app.js?v=13"></script>
+  <link rel="stylesheet" href="styles.css?v=14">
+  <script type="module" src="app.js?v=14"></script>
 </head>
 <body class="en-planning">
   <section id="vue-planning" class="no-print" aria-label="Planning du mois">
     <div class="pl-tete">
       <div class="pl-barre">
-        <button id="pl-prec" class="pl-btn" type="button" aria-label="Mois précédent">‹</button>
         <h1 id="pl-titre"></h1>
-        <button id="pl-suiv" class="pl-btn" type="button" aria-label="Mois suivant">›</button>
-        <button id="pl-reglages" class="pl-btn pl-engrenage" type="button" aria-label="Réglages"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg></button>
+        <div class="pl-nav" role="group" aria-label="Changer de mois">
+          <button id="pl-prec" class="pl-btn" type="button" aria-label="Mois précédent"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button id="pl-suiv" class="pl-btn" type="button" aria-label="Mois suivant"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+        <button id="pl-reglages" class="pl-engrenage" type="button" aria-label="Réglages"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M10.6 2.5h2.8l.5 2.3c.5.2 1 .4 1.4.7l2.2-.8 1.4 2.4-1.7 1.6c.1.5.1 1 0 1.5l1.7 1.6-1.4 2.4-2.2-.8c-.4.3-.9.5-1.4.7l-.5 2.3h-2.8l-.5-2.3c-.5-.2-1-.4-1.4-.7l-2.2.8-1.4-2.4 1.7-1.6a5 5 0 0 1 0-1.5L5.1 7.1l1.4-2.4 2.2.8c.4-.3.9-.5 1.4-.7zM12 9.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6z" transform="translate(0 2.4) scale(1 .98)"/></svg></button>
       </div>
       <div id="pl-cols" class="pl-cols"></div>
     </div>
@@ -137,7 +139,7 @@
         <button type="button" id="s-clear" class="link-btn danger">Effacer tous les horaires enregistrés</button>
       </fieldset>
 
-      <p class="small version">Version 13</p>
+      <p class="small version">Version 14</p>
       <div class="dialog-actions">
         <button value="cancel" type="submit" class="big-btn">Annuler</button>
         <button value="save" type="submit" class="big-btn primary" id="s-save">Enregistrer</button>
