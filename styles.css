@@ -978,3 +978,8 @@ table.pp { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .sheet:not(.paysage) td { height: 8.7mm; }
 .sheet:not(.paysage) .signature { position: static; text-align: right; margin: 4mm 22mm 0 0; }
 .sheet:not(.paysage) td { height: 9mm; }
+
+/* Titres de colonnes : fond doux pour les distinguer des cases d'information */
+.sheet th { background: #e4eaf5; color: #1b2a49; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.sheet .pp th.pp-nom { background: #f0f3f9; color: var(--ink); }
+.sheet .pp th[rowspan], .sheet .pp th:not(.pp-nom) { background: #e4eaf5; }

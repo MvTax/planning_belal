@@ -1,6 +1,6 @@
 // Planning boutique — planning du mois en quelques gestes → planning imprimé + fiches de présence (PDF).
 // Aucune IA, aucun scan : tout est saisi sur le téléphone et reste dessus (localStorage).
-import { initPlanning, joursDuMois } from "./planning.js?v=26";
+import { initPlanning, joursDuMois } from "./planning.js?v=27";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const JOURS_COURTS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -408,7 +408,7 @@ function ajusterApercu() {
 
 // ---------- PDF : planning du mois (paysage) + fiches (portrait) ----------
 async function genererPDF(progression) {
-  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=26");
+  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=27");
   const sheets = [...document.querySelectorAll("#sheets .sheet")];
   const stage = document.createElement("div");
   stage.style.cssText = "position:fixed;left:-10000px;top:0;";
