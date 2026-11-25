@@ -3,12 +3,12 @@
 // on glisse sur le bon choix et on relâche. Un simple toucher ouvre aussi la roue (sans glisser).
 
 export const CHOIX = [
-  { id: "travail", court: "OK", long: "OK", couleur: "#1d4fb8" },
-  { id: "repos", court: "Repos", long: "Repos", couleur: "#c62828" },
-  { id: "conge", court: "CP", long: "Congé", couleur: "#c2620a" },
-  { id: "ecole", court: "École", long: "École", couleur: "#6b3fb0" },
-  { id: "maladie", court: "Malade", long: "Malade", couleur: "#4f5b6b" },
-  { id: "absent", court: "Absent", long: "Absent", couleur: "#222831" },
+  { id: "travail", court: "OK", long: "OK", couleur: "#007aff" },
+  { id: "repos", court: "Repos", long: "Repos", couleur: "#ff3b30" },
+  { id: "conge", court: "CP", long: "Congé", couleur: "#ff9500" },
+  { id: "ecole", court: "École", long: "École", couleur: "#af52de" },
+  { id: "maladie", court: "Malade", long: "Malade", couleur: "#8e8e93" },
+  { id: "absent", court: "Absent", long: "Absent", couleur: "#1c1c1e" },
 ];
 const PAR_ID = Object.fromEntries(CHOIX.map((c) => [c.id, c]));
 const JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
@@ -105,7 +105,7 @@ export function initPlanning(ctx) {
   function rendre() {
     ecrire("fp.pl.courant", mois);
     const [y, m] = mois.split("-").map(Number);
-    titre.innerHTML = `${MOIS[m - 1][0].toUpperCase()}${MOIS[m - 1].slice(1)} <span class="pl-annee">${y}</span>`;
+    titre.innerHTML = `<span class="pl-annee">${y}</span>${MOIS[m - 1][0].toUpperCase()}${MOIS[m - 1].slice(1)}`;
     const vend = ctx.vendeurs();
     racine.style.setProperty("--nb-col", vend.length);
     entete.innerHTML =
