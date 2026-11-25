@@ -1,6 +1,6 @@
 // Planning boutique — planning du mois en quelques gestes → fiches de présence remplies → impression.
 // Tout tourne dans le navigateur ; les données restent sur le téléphone (localStorage).
-import { initPlanning, joursDuMois } from "./planning.js?v=15";
+import { initPlanning, joursDuMois } from "./planning.js?v=16";
 
 const MODEL = "claude-opus-5-5";
 const DELAI_MAX_MS = 75000; // au-delà, on arrête et on affiche un message
@@ -365,7 +365,7 @@ function datesDuMois(mois) {
 }
 
 async function lireSurLeTelephone(file) {
-  const { lireSurTelephone } = await import("./lecteur.js?v=15");
+  const { lireSurTelephone } = await import("./lecteur.js?v=16");
   const colonnes = state.settings.employes
     .filter((e) => e.colonne >= 1 && e.colonne <= 4)
     .map((e) => ({ nom: e.nom, colonne: Number(e.colonne) }));
@@ -419,7 +419,7 @@ async function choisirModelesGemini(ai) {
 }
 
 async function lireAvecGemini(images) {
-  const { GoogleGenAI, ApiError } = await import("./vendor/gemini.js?v=15");
+  const { GoogleGenAI, ApiError } = await import("./vendor/gemini.js?v=16");
   // Pas de longues relances silencieuses : 1 nouvel essai maximum, et une limite de temps
   const ai = new GoogleGenAI({
     apiKey: state.geminiKey,
@@ -489,7 +489,7 @@ async function lireAvecGemini(images) {
 
 // ----- Claude (Anthropic) -----
 async function lireAvecClaude(images) {
-  const { Anthropic } = await import("./vendor/anthropic.js?v=15");
+  const { Anthropic } = await import("./vendor/anthropic.js?v=16");
   const client = new Anthropic({ apiKey: state.apiKey, dangerouslyAllowBrowser: true, maxRetries: 1, timeout: DELAI_MAX_MS });
 
   let response;
@@ -754,7 +754,7 @@ function onEditionHoraire(ev) {
 
 // ---------- Impression / PDF ----------
 async function genererPDF() {
-  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=15");
+  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=16");
   const sheets = [...document.querySelectorAll("#sheets .sheet")];
   // Rendu hors écran à taille réelle (sans la réduction de l'aperçu)
   const stage = document.createElement("div");
@@ -825,25 +825,28 @@ function rendreReglages() {
   list.innerHTML = state.settings.employes
     .map(
       (e, i) => `
-      <div class="emp" data-i="${i}">
-        <div class="emp-row">
-          <input type="checkbox" class="emp-actif" ${e.actif ? "checked" : ""} aria-label="Imprimer une fiche">
+      <div class="emp liste" data-i="${i}">
+        <div class="ligne emp-top">
+          <span class="avatar" aria-hidden="true">${esc((e.nom || "?").trim()[0] || "?").toUpperCase()}</span>
           <input type="text" class="emp-nom" value="${esc(e.nom)}" placeholder="Nom" aria-label="Nom">
-          <input type="text" class="emp-boutique" value="${esc(e.boutique)}" placeholder="Boutique" aria-label="Boutique">
-          <button type="button" class="del" aria-label="Supprimer">×</button>
+          <label class="interrupteur" aria-label="Recevoir une fiche"><input type="checkbox" class="emp-actif" ${e.actif ? "checked" : ""}><i></i></label>
         </div>
-        <div class="emp-repos">Repos habituels
+        <label class="ligne"><span class="ligne-nom">Boutique</span>
+          <input type="text" class="emp-boutique" value="${esc(e.boutique)}" placeholder="Boutique" aria-label="Boutique">
+        </label>
+        <label class="ligne"><span class="ligne-nom">Colonne du planning</span>
+          <select class="emp-colonne">
+            ${[0, 1, 2, 3, 4].map((c) => `<option value="${c}"${Number(e.colonne) === c ? " selected" : ""}>${c ? `Vendeur ${c}` : "Aucune"}</option>`).join("")}
+          </select>
+        </label>
+        <div class="ligne ligne-col emp-repos">
+          <span class="ligne-nom">Repos habituels</span>
           <span class="jours">${["L", "M", "M", "J", "V", "S", "D"]
             .map((j, k) => `<label><input type="checkbox" class="emp-rj" value="${k}"${(e.repos || []).includes(k) ? " checked" : ""}><span>${j}</span></label>`)
             .join("")}</span>
         </div>
-        <label class="emp-col">Colonne sur le planning
-          <select class="emp-colonne">
-            ${[0, 1, 2, 3, 4].map((c) => `<option value="${c}"${Number(e.colonne) === c ? " selected" : ""}>${c ? `Vendeur ${c}` : "Aucune (extra)"}</option>`).join("")}
-          </select>
-        </label>
         <details class="emp-h">
-          <summary>Horaires habituels</summary>
+          <summary class="ligne"><span class="ligne-nom">Horaires habituels</span><span class="chevron" aria-hidden="true"></span></summary>
           <div class="h-grid">
             <span></span><span>Arrivée</span><span>Pause</span><span>Reprise</span><span>Départ</span>
             ${JOURS_COURTS.map(
@@ -855,6 +858,7 @@ function rendreReglages() {
             ).join("")}
           </div>
         </details>
+        <button type="button" class="ligne ligne-action rouge del">Supprimer ce salarié</button>
       </div>`,
     )
     .join("");
@@ -1059,7 +1063,7 @@ function init() {
 
   // Scan réel (caméra) ou simulation avec la photo du planning de novembre 2026
   const scanner = async (options) => {
-    const { openScanner } = await import("./scanner.js?v=15");
+    const { openScanner } = await import("./scanner.js?v=16");
     const { pages, finished } = await openScanner(options);
     if (!pages.length) return;
     state.photos.push(...pages);
@@ -1078,7 +1082,7 @@ function init() {
   $("btn-simulation").addEventListener("click", () => {
     state.mois = $("mois").value = "2026-11"; // la photo de test est le planning de novembre 2026
     save();
-    scanner({ image: "test/planning-novembre-2026.jpg?v=15" });
+    scanner({ image: "test/planning-novembre-2026.jpg?v=16" });
   });
   $("thumbs").addEventListener("click", (ev) => {
     const i = ev.target.dataset?.i;

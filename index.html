@@ -10,8 +10,8 @@
   <link rel="icon" type="image/png" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <meta name="apple-mobile-web-app-title" content="Planning">
-  <link rel="stylesheet" href="styles.css?v=15">
-  <script type="module" src="app.js?v=15"></script>
+  <link rel="stylesheet" href="styles.css?v=16">
+  <script type="module" src="app.js?v=16"></script>
 </head>
 <body class="en-planning">
   <section id="vue-planning" class="no-print" aria-label="Planning du mois">
@@ -97,53 +97,64 @@
 
   <dialog id="settings" class="no-print">
     <form method="dialog" id="settings-form">
-      <h2>Réglages</h2>
+      <header class="set-head">
+        <button value="cancel" type="submit" class="set-annuler">Annuler</button>
+        <h2>Réglages</h2>
+        <button value="save" type="submit" class="set-ok" id="s-save">OK</button>
+      </header>
 
-      <fieldset>
-        <legend>Taille du texte</legend>
-        <div class="taille-choix">
-          <label><input type="radio" name="taille" value="normal"><span style="font-size:15px">A</span></label>
-          <label><input type="radio" name="taille" value="grand"><span style="font-size:19px">A</span></label>
-          <label><input type="radio" name="taille" value="tres"><span style="font-size:24px">A</span></label>
+      <section class="groupe">
+        <h3 class="groupe-titre">Affichage</h3>
+        <div class="liste">
+          <div class="ligne ligne-col">
+            <span class="ligne-nom">Taille du texte</span>
+            <div class="taille-choix">
+              <label><input type="radio" name="taille" value="normal"><span style="font-size:14px">A</span></label>
+              <label><input type="radio" name="taille" value="grand"><span style="font-size:18px">A</span></label>
+              <label><input type="radio" name="taille" value="tres"><span style="font-size:23px">A</span></label>
+            </div>
+          </div>
         </div>
-      </fieldset>
+      </section>
 
-      <fieldset>
-        <legend>Lecture d'un planning papier scanné</legend>
-        <label class="check"><input type="radio" name="provider" value="local"> Sur le téléphone (gratuit, sans internet)</label>
-        <div data-for="local">
-          <p class="small">Lit la couleur de l'encre dans la colonne de chaque salarié : rouge = Repos, bleu = OK. Les autres mentions (CP, École, prénom…) sont signalées en orange pour vérification.</p>
-        </div>
-        <label class="check"><input type="radio" name="provider" value="gemini"> Google Gemini (lit tout le texte)</label>
-        <label class="check"><input type="radio" name="provider" value="claude"> Claude (Anthropic)</label>
-        <div data-for="gemini" hidden>
-          <p class="small">Clé Gemini : aistudio.google.com → Get API key. Elle reste uniquement sur ce téléphone.</p>
-          <input type="password" id="s-geminikey" autocomplete="off" placeholder="AIza…" spellcheck="false">
-        </div>
-        <div data-for="claude" hidden>
-          <p class="small">Clé Claude : console.anthropic.com → API Keys. Elle reste uniquement sur ce téléphone.</p>
-          <input type="password" id="s-apikey" autocomplete="off" placeholder="sk-ant-…" spellcheck="false">
-        </div>
-      </fieldset>
-
-      <fieldset>
-        <legend>Salariés</legend>
-        <p class="small">Seuls les salariés cochés reçoivent une fiche. « OK » sur le planning = leurs horaires habituels. Les jours de repos habituels servent à préparer chaque nouveau mois.</p>
+      <section class="groupe">
+        <h3 class="groupe-titre">Équipe</h3>
         <div id="s-employes"></div>
-        <button type="button" id="s-add-emp" class="link-btn">+ Ajouter un salarié</button>
-      </fieldset>
+        <button type="button" id="s-add-emp" class="ligne-bouton">
+          <span class="plus">+</span> Ajouter un salarié
+        </button>
+        <p class="groupe-note">Seuls les salariés dont l'interrupteur est activé reçoivent une fiche. Sur le planning, « OK » reprend leurs horaires habituels.</p>
+      </section>
 
-      <fieldset>
-        <legend>Données</legend>
-        <button type="button" id="s-exemple" class="link-btn">Charger l'exemple (Belal, novembre 2026)</button>
-        <button type="button" id="s-clear" class="link-btn danger">Effacer tous les horaires enregistrés</button>
-      </fieldset>
+      <section class="groupe">
+        <h3 class="groupe-titre">Lire un planning papier</h3>
+        <div class="liste">
+          <label class="ligne choix"><input type="radio" name="provider" value="local"><span class="ligne-nom">Sur le téléphone<small>Gratuit, sans internet</small></span></label>
+          <label class="ligne choix"><input type="radio" name="provider" value="gemini"><span class="ligne-nom">Google Gemini<small>Lit tout le texte écrit</small></span></label>
+          <label class="ligne choix"><input type="radio" name="provider" value="claude"><span class="ligne-nom">Claude<small>Lit tout le texte écrit</small></span></label>
+          <div data-for="local" class="ligne ligne-note">Reconnaît la couleur de l'encre dans la colonne de chaque salarié : rouge pour Repos, bleu pour OK. Le reste est signalé pour être vérifié.</div>
+          <div data-for="gemini" class="ligne ligne-col" hidden>
+            <span class="ligne-nom">Clé Gemini</span>
+            <input type="password" id="s-geminikey" autocomplete="off" placeholder="AIza…" spellcheck="false">
+            <p class="groupe-note">À créer sur aistudio.google.com. Elle reste uniquement sur ce téléphone.</p>
+          </div>
+          <div data-for="claude" class="ligne ligne-col" hidden>
+            <span class="ligne-nom">Clé Claude</span>
+            <input type="password" id="s-apikey" autocomplete="off" placeholder="sk-ant-…" spellcheck="false">
+            <p class="groupe-note">À créer sur console.anthropic.com. Elle reste uniquement sur ce téléphone.</p>
+          </div>
+        </div>
+      </section>
 
-      <p class="small version">Version 15</p>
-      <div class="dialog-actions">
-        <button value="cancel" type="submit" class="big-btn">Annuler</button>
-        <button value="save" type="submit" class="big-btn primary" id="s-save">Enregistrer</button>
-      </div>
+      <section class="groupe">
+        <h3 class="groupe-titre">Données</h3>
+        <div class="liste">
+          <button type="button" id="s-exemple" class="ligne ligne-action">Remettre l'exemple de novembre 2026</button>
+          <button type="button" id="s-clear" class="ligne ligne-action rouge">Effacer tous les horaires</button>
+        </div>
+      </section>
+
+      <p class="version">Version 16</p>
     </form>
   </dialog>
 </body>
