@@ -1,6 +1,6 @@
 // Planning boutique — planning du mois en quelques gestes → planning imprimé + fiches de présence (PDF).
 // Aucune IA, aucun scan : tout est saisi sur le téléphone et reste dessus (localStorage).
-import { initPlanning, joursDuMois } from "./planning.js?v=23";
+import { initPlanning, joursDuMois } from "./planning.js?v=24";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const JOURS_COURTS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -391,7 +391,6 @@ function rendreFiches() {
   ajusterApercu();
   attenteToucher = false;
   majBoutonsImpression();
-  planifierPreparation();
 }
 
 // Réduit chaque page à la largeur de l'écran
@@ -407,7 +406,7 @@ function ajusterApercu() {
 
 // ---------- PDF : planning du mois (paysage) + fiches (portrait) ----------
 async function genererPDF(progression) {
-  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=23");
+  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=24");
   const sheets = [...document.querySelectorAll("#sheets .sheet")];
   const stage = document.createElement("div");
   stage.style.cssText = "position:fixed;left:-10000px;top:0;";
@@ -434,11 +433,11 @@ async function genererPDF(progression) {
 }
 
 // ----- Impression -----
-// Le PDF est préparé dès l'ouverture de l'écran : au toucher, la fenêtre d'impression s'ouvre tout de suite
-// (iOS n'autorise l'ouverture de la feuille de partage que juste après un toucher).
+// « Imprimer » ouvre directement la fenêtre d'impression de l'appareil (AirPrint en Wi-Fi sur iPhone).
+// Le PDF n'est qu'une option : bouton « PDF » à côté, préparé seulement à la demande.
 let pdfPret = null; // { sig, file }
 let pdfEnCours = null; // { sig, promesse }
-let attenteToucher = false; // PDF prêt, mais un nouveau toucher est nécessaire
+let attenteToucher = false; // PDF prêt, mais un nouveau toucher est nécessaire pour le partager
 let progression = "";
 let compteurPreparation = 0;
 
@@ -453,15 +452,14 @@ const nomPDF = () => {
 };
 
 function majBoutonsImpression(message = "") {
-  const occupe = !!pdfEnCours;
-  let texte = "Imprimer";
-  if (occupe) texte = progression || "Préparation…";
-  else if (attenteToucher) texte = "Prêt : appuyez pour imprimer";
-  for (const b of document.querySelectorAll(".btn-imprimer")) {
+  let texte = "PDF";
+  if (pdfEnCours) texte = progression ? progression.replace("Préparation… page ", "") : "…";
+  else if (attenteToucher) texte = "Prêt : toucher";
+  for (const b of document.querySelectorAll(".btn-pdf")) {
     b.querySelector("span").textContent = texte;
-    b.classList.toggle("occupe", occupe);
+    b.classList.toggle("occupe", !!pdfEnCours);
   }
-  for (const s of document.querySelectorAll(".statut-impression")) s.textContent = message;
+  for (const m of document.querySelectorAll(".statut-impression")) m.textContent = message;
 }
 
 function preparerPDF() {
@@ -471,7 +469,7 @@ function preparerPDF() {
   const numero = ++compteurPreparation;
   const promesse = genererPDF((i, n) => {
     if (numero === compteurPreparation) {
-      progression = `Préparation… page ${i} sur ${n}`;
+      progression = `Préparation… page ${i}/${n}`;
       majBoutonsImpression();
     }
   })
@@ -490,72 +488,65 @@ function preparerPDF() {
   return promesse;
 }
 
-// Impression depuis un ordinateur ou un téléphone sans feuille de partage : fenêtre d'impression du navigateur
-function imprimerFichier(file) {
-  const url = URL.createObjectURL(file);
-  const cadre = document.createElement("iframe");
-  cadre.style.cssText = "position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0";
-  cadre.src = url;
-  document.body.appendChild(cadre);
-  cadre.onload = () => {
-    try {
-      cadre.contentWindow.focus();
-      cadre.contentWindow.print();
-    } catch {
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = file.name;
-      a.click();
-    }
-  };
-  setTimeout(() => {
-    cadre.remove();
-    URL.revokeObjectURL(url);
-  }, 120000);
-}
-
 async function partagerFichier(file) {
   if (navigator.canShare?.({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: "Planning et fiches" }); // contient « Imprimer » (AirPrint, en Wi-Fi)
+      await navigator.share({ files: [file], title: "Planning et fiches" });
     } catch (err) {
       if (err?.name === "AbortError") return;
       if (err?.name === "NotAllowedError") {
         attenteToucher = true; // le toucher est trop ancien : un nouveau toucher suffira
-        majBoutonsImpression();
+        majBoutonsImpression("Le PDF est prêt : touchez « PDF » une fois de plus.");
         return;
       }
       throw err;
     }
-  } else imprimerFichier(file);
+  } else {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(file);
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  }
 }
 
-async function imprimer() {
-  if (pdfEnCours && !attenteToucher) {
-    // Toujours en préparation : on prévient, le bouton passera à « Prêt »
-    attenteToucher = true;
-    majBoutonsImpression("Un instant, le document se prépare…");
-    pdfEnCours.promesse.finally(() => majBoutonsImpression());
-    return;
-  }
+async function pdf() {
+  if (pdfEnCours) return;
   try {
+    const encore = attenteToucher;
     attenteToucher = false;
     majBoutonsImpression();
     const pret = pdfPret?.sig === signature() ? pdfPret : await preparerPDF();
     await partagerFichier(pret.file);
-    majBoutonsImpression("");
+    if (!attenteToucher && !encore) majBoutonsImpression("");
   } catch (err) {
-    majBoutonsImpression(`Impression impossible : ${err.message}`);
+    majBoutonsImpression(`PDF impossible : ${err.message}`);
   }
 }
 
-let tPrepa;
-function planifierPreparation() {
-  clearTimeout(tPrepa);
-  tPrepa = setTimeout(() => {
-    if (document.getElementById("vue-fiches").hidden) return;
-    preparerPDF().catch(() => {});
-  }, 700);
+// Sans prise en charge des pages nommées (anciens navigateurs), le planning est tourné pour tenir sur une page portrait
+const pagesNommees = () => "page" in document.documentElement.style;
+
+function imprimer() {
+  document.documentElement.classList.toggle("print-rotation", !pagesNommees());
+  let ouverte = false;
+  const marque = () => (ouverte = true);
+  window.addEventListener("beforeprint", marque, { once: true });
+  try {
+    window.print();
+  } catch {
+    /* repli ci-dessous */
+  }
+  // Certains téléphones n'ouvrent pas la fenêtre d'impression : on propose alors le PDF
+  setTimeout(() => {
+    window.removeEventListener("beforeprint", marque);
+    if (!ouverte) {
+      majBoutonsImpression("L'impression directe ne s'est pas ouverte : préparation du PDF, puis choisissez « Imprimer » dans la liste.");
+      pdf();
+    }
+  }, 1200);
 }
 
 // ---------- Réglages ----------
@@ -676,6 +667,8 @@ function init() {
   });
   for (const b of document.querySelectorAll(".onglets button")) b.addEventListener("click", () => montrerVue(b.dataset.vue));
   for (const b of document.querySelectorAll(".btn-imprimer")) b.addEventListener("click", imprimer);
+  for (const b of document.querySelectorAll(".btn-pdf")) b.addEventListener("click", pdf);
+  window.addEventListener("afterprint", ajusterApercu);
   $("fiches-valider").addEventListener("click", () => {
     montrerVue("planning");
     planning.allerExtras();

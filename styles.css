@@ -913,3 +913,28 @@ table.pp { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .aide-wifi summary { color: var(--bleu); font-weight: 600; cursor: pointer; padding: 4px 0; font-size: calc(15px * var(--t)); }
 .aide-wifi ol { margin: 8px 0 8px 20px; padding: 0; color: var(--sys-label2); font-size: calc(14.5px * var(--t)); line-height: 1.45; }
 .aide-wifi li { margin-bottom: 4px; }
+
+/* Imprimer + petit bouton PDF */
+.rangee-impression { display: flex; gap: 10px; align-items: stretch; }
+.rangee-impression .btn-imprimer { flex: 1; margin: 8px 0 0; }
+.rangee-impression .btn-pdf { flex: none; width: auto; min-width: 84px; margin: 8px 0 0; min-height: 64px; padding: 0 14px; font-size: calc(15px * var(--t)); background: rgba(118,118,128,.12); color: var(--bleu); gap: 6px; }
+.btn-pdf.occupe { opacity: .8; }
+.btn-imprimer.occupe::before { animation: none; }
+.btn-imprimer { }
+
+/* ---- Impression papier : planning (paysage) puis fiches (portrait) ---- */
+@media print {
+  @page { size: A4 portrait; margin: 0; }
+  @page paysage { size: A4 landscape; margin: 0; }
+  html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
+  #vue-planning, .onglets, .bandeau, .roue-voile, .feuille-voile, dialog, .no-print, .topbar, .page-label { display: none !important; }
+  #vue-fiches { display: block !important; }
+  #sheets { display: block !important; max-width: none !important; margin: 0 !important; padding: 0 !important; }
+  .page-wrap { box-shadow: none !important; margin: 0 !important; padding: 0 !important; height: auto !important; overflow: visible !important; border-radius: 0 !important; }
+  .sheet { transform: none !important; margin: 0 !important; width: 210mm !important; height: 296.5mm !important; overflow: hidden; break-after: page; page-break-after: always; }
+  .page-wrap:last-child .sheet { break-after: auto; page-break-after: auto; }
+  .sheet.paysage { page: paysage; width: 297mm !important; height: 209.5mm !important; }
+  /* Repli : planning tourné de 90° sur une page portrait */
+  html.print-rotation .page-wrap:has(.paysage) { width: 210mm; height: 296.5mm !important; position: relative; overflow: hidden !important; break-after: page; page-break-after: always; }
+  html.print-rotation .sheet.paysage { page: auto; position: absolute; top: 0; left: 0; transform-origin: top left; transform: translateX(209.5mm) rotate(90deg) !important; break-after: auto; page-break-after: auto; }
+}

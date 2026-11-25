@@ -10,8 +10,8 @@
   <link rel="icon" type="image/png" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <meta name="apple-mobile-web-app-title" content="Planning">
-  <link rel="stylesheet" href="styles.css?v=23">
-  <script type="module" src="app.js?v=23"></script>
+  <link rel="stylesheet" href="styles.css?v=24">
+  <script type="module" src="app.js?v=24"></script>
 </head>
 <body class="en-planning">
   <section id="vue-planning" class="no-print" aria-label="Planning du mois">
@@ -59,16 +59,19 @@
           <span id="fiches-alerte-txt"></span>
           <button type="button" id="fiches-valider">Aller les valider</button>
         </div>
-        <button class="big-btn primary btn-imprimer" type="button"><span>Imprimer</span></button>
+        <div class="rangee-impression">
+          <button class="big-btn primary btn-imprimer" type="button"><span>Imprimer</span></button>
+          <button class="big-btn btn-pdf" type="button" aria-label="Obtenir en PDF"><span>PDF</span></button>
+        </div>
         <p class="status statut-impression" role="status" aria-live="polite"></p>
-        <p class="small">Un seul document : le planning du mois, puis la fiche de chaque salarié.</p>
+        <p class="small">Imprime le planning du mois, puis la fiche de chaque salarié. Le bouton « PDF » sert seulement à en garder une copie.</p>
         <details class="aide-wifi">
           <summary>Comment imprimer en Wi-Fi ?</summary>
           <ol>
             <li>Allumez l'imprimante et connectez-la au même Wi-Fi que le téléphone.</li>
-            <li>Appuyez sur <b>Imprimer</b> : la liste de partage s'ouvre.</li>
-            <li>Choisissez <b>Imprimer</b> (icône d'imprimante), puis votre imprimante dans la liste.</li>
-            <li>Vérifiez « 9 pages » (ou le nombre indiqué), puis appuyez sur <b>Imprimer</b> en haut à droite.</li>
+            <li>Appuyez sur <b>Imprimer</b> : la fenêtre d'impression s'ouvre.</li>
+            <li>Touchez <b>Imprimante</b> et choisissez la vôtre dans la liste.</li>
+            <li>Vérifiez le nombre de pages, puis appuyez sur <b>Imprimer</b> en haut à droite.</li>
           </ol>
           <p class="small">Il faut une imprimante compatible <b>AirPrint</b> (la plupart des imprimantes Wi-Fi récentes). La première fois, l'iPhone la repère tout seul.</p>
         </details>
@@ -79,7 +82,10 @@
 
     <main class="no-print fiches-bas">
       <section class="card">
-        <button class="big-btn primary btn-imprimer" type="button"><span>Imprimer</span></button>
+        <div class="rangee-impression">
+          <button class="big-btn primary btn-imprimer" type="button"><span>Imprimer</span></button>
+          <button class="big-btn btn-pdf" type="button" aria-label="Obtenir en PDF"><span>PDF</span></button>
+        </div>
         <p class="status statut-impression" role="status" aria-live="polite"></p>
       </section>
     </main>
@@ -146,7 +152,7 @@
         </div>
       </section>
 
-      <p class="version">Version 23</p>
+      <p class="version">Version 24</p>
     </form>
   </dialog>
 </body>
