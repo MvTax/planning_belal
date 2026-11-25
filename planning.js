@@ -632,8 +632,16 @@ export function initPlanning(ctx) {
   function afficherPage(n) {
     pageActive = n;
     racine.classList.toggle("page-com", n === 1);
+    ajusterHauteur();
     onglets.forEach((b, i) => b.classList.toggle("actif", i === n));
   }
+  // Chaque page garde sa propre hauteur : la zone suit la page affichée, sans vide en dessous
+  const panneaux = [grille, pageCom];
+  const ajusterHauteur = () => {
+    pages.style.height = `${panneaux[pageActive].offsetHeight}px`;
+  };
+  new ResizeObserver(ajusterHauteur).observe(grille);
+  new ResizeObserver(ajusterHauteur).observe(pageCom);
   let tAttente;
   pages.addEventListener("scroll", () => {
     clearTimeout(tAttente);

@@ -807,7 +807,7 @@ dialog#settings {
 }
 .pl-pages::-webkit-scrollbar { display: none; }
 .pl-page { flex: 0 0 100%; width: 100%; min-width: 0; scroll-snap-align: start; scroll-snap-stop: always; box-sizing: border-box; }
-.pl-pages { overflow-y: clip; }
+.pl-pages { overflow-y: clip; align-items: flex-start; }
 
 .pl-onglets {
   display: flex; margin: 2px 0 0; padding: 2px; border-radius: 9px; background: rgba(118, 118, 128, .12);
