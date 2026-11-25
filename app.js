@@ -1,6 +1,6 @@
 // Planning boutique — planning du mois en quelques gestes → planning imprimé + fiches de présence (PDF).
 // Aucune IA, aucun scan : tout est saisi sur le téléphone et reste dessus (localStorage).
-import { initPlanning, joursDuMois } from "./planning.js?v=24";
+import { initPlanning, joursDuMois } from "./planning.js?v=26";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const JOURS_COURTS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -333,7 +333,9 @@ function pagePlanning(mois, donnees) {
   const jours = joursDuMois(mois);
   const vend = vendeursDuPlanning();
   const boutique = state.settings.employes.find((e) => e.boutique)?.boutique || "";
-  const hauteur = Math.min(6.4, 154 / jours.length).toFixed(2);
+  const hauteurNum = Math.min(7.2, 171 / jours.length); // le tableau occupe toute la page
+  const hauteur = hauteurNum.toFixed(2);
+  const police = Math.min(11.5, hauteurNum * 1.95).toFixed(1);
   const cellule = (s) => (s ? `<span class="pp-${s}">${TEXTE_PLANNING[s] || ""}</span>` : "");
   const lignes = jours
     .map((d) => {
@@ -354,7 +356,7 @@ function pagePlanning(mois, donnees) {
   return `
           <div class="sheet paysage">
             <div class="pp-tete"><span>Magasin :<b>${esc(boutique)}</b></span><span>Mois :<b>${MOIS[m - 1][0].toUpperCase()}${MOIS[m - 1].slice(1)} ${y}</b></span></div>
-            <table class="pp">
+            <table class="pp" style="--pp-f:${police}pt">
               <colgroup><col style="width:7.5%"><col style="width:10.5%">${vend.map(() => `<col style="width:${(40 / Math.max(n, 1)).toFixed(2)}%">`).join("")}<col style="width:9.5%"><col style="width:9.5%"><col></colgroup>
               <thead>
                 <tr><th rowspan="2">Date</th><th rowspan="2">JOUR</th>${vend.map((_, i) => `<th>Vendeur ${i + 1}</th>`).join("")}<th rowspan="2">Extra</th><th rowspan="2">Extra</th><th rowspan="2">Commentaires, Acomptes et Retards</th></tr>
@@ -406,7 +408,7 @@ function ajusterApercu() {
 
 // ---------- PDF : planning du mois (paysage) + fiches (portrait) ----------
 async function genererPDF(progression) {
-  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=24");
+  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=26");
   const sheets = [...document.querySelectorAll("#sheets .sheet")];
   const stage = document.createElement("div");
   stage.style.cssText = "position:fixed;left:-10000px;top:0;";

@@ -938,3 +938,43 @@ table.pp { width: 100%; border-collapse: collapse; table-layout: fixed; }
   html.print-rotation .page-wrap:has(.paysage) { width: 210mm; height: 296.5mm !important; position: relative; overflow: hidden !important; break-after: page; page-break-after: always; }
   html.print-rotation .sheet.paysage { page: auto; position: absolute; top: 0; left: 0; transform-origin: top left; transform: translateX(209.5mm) rotate(90deg) !important; break-after: auto; page-break-after: auto; }
 }
+
+/* =====================================================================
+   PAGES IMPRIMÉES : tout l'espace de la feuille
+   ===================================================================== */
+/* Planning du mois — A4 paysage */
+.sheet.paysage { padding: 8mm 8mm 6mm 17mm; }
+.sheet .pp-tete { font-size: 14pt; margin: 0 0 3mm; padding-right: 0; }
+.sheet .pp-tete b { font-size: 15pt; }
+.sheet .pp td { font-size: var(--pp-f, 10pt); }
+.sheet .pp td.pp-date, .sheet .pp td.pp-jour { font-size: calc(var(--pp-f, 10pt) - 1.2pt); }
+.sheet .pp td.pp-extra, .sheet .pp td.pp-com { font-size: calc(var(--pp-f, 10pt) - .8pt); }
+.sheet .pp th { font-size: calc(var(--pp-f, 10pt) - .6pt); height: 6.4mm; }
+.sheet .pp th.pp-nom { font-size: calc(var(--pp-f, 10pt) + .6pt); height: 6.2mm; }
+.sheet .pp tr.lundi td { border-top-width: 2.2px; }
+
+/* Fiches hebdomadaires — A4 portrait */
+.sheet:not(.paysage) { padding: 11mm 10mm 8mm 19mm; }
+.sheet:not(.paysage) .title { font-size: 17pt; margin: 0 0 7mm; }
+.sheet:not(.paysage) .field { font-size: 13pt; margin: 0 0 4mm; }
+.sheet:not(.paysage) .field .val { font-size: 14pt; }
+.sheet:not(.paysage) .week { margin-top: 5mm; }
+.sheet:not(.paysage) .semaine { font-size: 13pt; margin: 0 0 2.5mm; }
+.sheet:not(.paysage) th { font-size: 9.6pt; height: 7.4mm; }
+.sheet:not(.paysage) td { height: 9.3mm; font-size: 13.5pt; }
+.sheet:not(.paysage) td.jour { font-size: 10pt; }
+.sheet:not(.paysage) td.repos { font-size: 22pt; }
+.sheet:not(.paysage) td.repos.span2 { font-size: 34pt; }
+.sheet:not(.paysage) td.absence { font-size: 14pt; }
+.sheet:not(.paysage) .ferie { font-size: 11pt; }
+.sheet:not(.paysage) .signature { font-size: 13pt; bottom: 10mm; right: 30mm; }
+/* Ajustement : tout tient sur la page, signature sous le dernier tableau */
+.sheet:not(.paysage) { padding: 9mm 10mm 7mm 19mm; }
+.sheet:not(.paysage) .title { margin: 0 0 4.5mm; }
+.sheet:not(.paysage) .field { margin: 0 0 2.5mm; }
+.sheet:not(.paysage) .week { margin-top: 3.2mm; }
+.sheet:not(.paysage) .semaine { margin: 0 0 2mm; }
+.sheet:not(.paysage) th { font-size: 9pt; height: 7mm; }
+.sheet:not(.paysage) td { height: 8.7mm; }
+.sheet:not(.paysage) .signature { position: static; text-align: right; margin: 4mm 22mm 0 0; }
+.sheet:not(.paysage) td { height: 9mm; }
