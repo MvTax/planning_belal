@@ -112,7 +112,7 @@ export function trouverGrille(canvas) {
   if (g.lignesV.length < 7) throw new Error("Tableau introuvable sur le scan. Refaites le scan avec toute la feuille bien visible et bien à plat.");
 
   // Jours : traits horizontaux de la colonne Date. L'en-tête est plus haut qu'une ligne de jour.
-  const L = lignesDansBande(g, g.lignesV[0], g.lignesV[1]).filter((y) => y > h * 0.02 && y < h * 0.98);
+  const L = lignesDansBande(g, g.lignesV[0], g.lignesV[1]).filter((y) => y > h * 0.01 && y < h * 0.995);
   if (L.length < 10) throw new Error("Lignes du tableau introuvables. Refaites le scan avec toute la feuille bien visible.");
   const ecarts = L.slice(1).map((y, i) => y - L[i]);
   g.pas = mediane(ecarts);
