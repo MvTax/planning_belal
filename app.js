@@ -328,6 +328,13 @@ async function lirePlanning(files) {
 }
 
 // ----- Lecture sur le téléphone (gratuite, sans internet) -----
+// Image de contrôle (grille trouvée + ce qui a été lu), affichée sous le bouton de lecture
+function afficherApercu(src) {
+  const box = document.getElementById("controle");
+  box.hidden = !src;
+  if (src) box.querySelector("img").src = src;
+}
+
 function datesDuMois(mois) {
   const [y, m] = mois.split("-").map(Number);
   const n = new Date(y, m, 0).getDate();
@@ -335,7 +342,7 @@ function datesDuMois(mois) {
 }
 
 async function lireSurLeTelephone(file) {
-  const { lireSurTelephone } = await import("./lecteur.js?v=8");
+  const { lireSurTelephone } = await import("./lecteur.js?v=9");
   const colonnes = state.settings.employes
     .filter((e) => e.colonne >= 1 && e.colonne <= 4)
     .map((e) => ({ nom: e.nom, colonne: Number(e.colonne) }));
@@ -350,7 +357,14 @@ async function lireSurLeTelephone(file) {
     canvas.height = img.naturalHeight;
     canvas.getContext("2d").drawImage(img, 0, 0);
     state.dernierModele = "";
-    const lu = lireSurTelephone(canvas, colonnes, datesDuMois(state.mois));
+    let lu;
+    try {
+      lu = lireSurTelephone(canvas, colonnes, datesDuMois(state.mois));
+    } catch (err) {
+      afficherApercu(err.apercu);
+      throw err;
+    }
+    afficherApercu(lu.apercu);
     const aVerifier = lu.vendeurs.some((v) => v.cases.some((c) => c.endsWith("?") || c === ""));
     if (aVerifier && !lu.remarques) lu.remarques = "Les jours en orange (écriture autre que OK / Repos, ou case vide) sont à vérifier dans « Vérifier / corriger ».";
     return convertirLecture(lu);
@@ -382,7 +396,7 @@ async function choisirModelesGemini(ai) {
 }
 
 async function lireAvecGemini(images) {
-  const { GoogleGenAI, ApiError } = await import("./vendor/gemini.js?v=8");
+  const { GoogleGenAI, ApiError } = await import("./vendor/gemini.js?v=9");
   // Pas de longues relances silencieuses : 1 nouvel essai maximum, et une limite de temps
   const ai = new GoogleGenAI({
     apiKey: state.geminiKey,
@@ -452,7 +466,7 @@ async function lireAvecGemini(images) {
 
 // ----- Claude (Anthropic) -----
 async function lireAvecClaude(images) {
-  const { Anthropic } = await import("./vendor/anthropic.js?v=8");
+  const { Anthropic } = await import("./vendor/anthropic.js?v=9");
   const client = new Anthropic({ apiKey: state.apiKey, dangerouslyAllowBrowser: true, maxRetries: 1, timeout: DELAI_MAX_MS });
 
   let response;
@@ -717,7 +731,7 @@ function onEditionHoraire(ev) {
 
 // ---------- Impression / PDF ----------
 async function genererPDF() {
-  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=8");
+  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=9");
   const sheets = [...document.querySelectorAll("#sheets .sheet")];
   // Rendu hors écran à taille réelle (sans la réduction de l'aperçu)
   const stage = document.createElement("div");
@@ -940,7 +954,7 @@ function init() {
 
   // Scan réel (caméra) ou simulation avec la photo du planning de novembre 2026
   const scanner = async (options) => {
-    const { openScanner } = await import("./scanner.js?v=8");
+    const { openScanner } = await import("./scanner.js?v=9");
     const { pages, finished } = await openScanner(options);
     if (!pages.length) return;
     state.photos.push(...pages);
@@ -959,7 +973,7 @@ function init() {
   $("btn-simulation").addEventListener("click", () => {
     state.mois = $("mois").value = "2026-11"; // la photo de test est le planning de novembre 2026
     save();
-    scanner({ image: "test/planning-novembre-2026.jpg?v=8" });
+    scanner({ image: "test/planning-novembre-2026.jpg?v=9" });
   });
   $("thumbs").addEventListener("click", (ev) => {
     const i = ev.target.dataset?.i;

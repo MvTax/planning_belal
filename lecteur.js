@@ -13,7 +13,24 @@ function pixels(canvas) {
   c.height = h;
   const ctx = c.getContext("2d", { willReadFrequently: true });
   ctx.drawImage(canvas, 0, 0, w, h);
-  return { w, h, d: ctx.getImageData(0, 0, w, h).data };
+  const d = ctx.getImageData(0, 0, w, h).data;
+  // Balance des blancs : le papier (la couleur la plus fréquente, claire) doit être blanc neutre,
+  // quelle que soit la teinte du scan selon le téléphone ou l'éclairage.
+  const hist = [new Uint32Array(256), new Uint32Array(256), new Uint32Array(256)];
+  for (let j = 0; j < d.length; j += 16) for (let c = 0; c < 3; c++) hist[c][d[j + c]]++;
+  const papier = hist.map((hc) => {
+    const total = hc.reduce((a, b) => a + b, 0);
+    let n = 0;
+    for (let v = 0; v < 256; v++) {
+      n += hc[v];
+      if (n >= total * 0.7) return Math.max(v, 60);
+    }
+    return 255;
+  });
+  for (let j = 0; j < d.length; j += 4) {
+    for (let c = 0; c < 3; c++) d[j + c] = Math.min(255, (d[j + c] * 255) / papier[c]);
+  }
+  return { w, h, d };
 }
 
 // Trait imprimé du tableau : sombre et sans couleur
@@ -22,8 +39,12 @@ const estTrait = (r, g, b) => Math.max(r, g, b) - Math.min(r, g, b) < 60 && r + 
 const estJaune = (r, g, b) => r > 170 && g > 150 && b < 140 && Math.abs(r - g) < 70;
 // Encre manuscrite : tout ce qui n'est pas du papier (ni du surligneur)
 const estEncre = (r, g, b) => (r + g + b < 3 * 185 || Math.max(r, g, b) - Math.min(r, g, b) > 60) && !estJaune(r, g, b);
-// Encre rouge (Repos, CP)
-const estRouge = (r, g, b) => r > 110 && r > g + 45 && r > b + 25;
+// Encre rouge (Repos, CP) : teinte entre rose et rouge-orangé, quelle que soit la luminosité du scan
+const estRouge = (r, g, b) => {
+  const e = r - Math.min(g, b);
+  if (r < 100 || r < Math.max(g, b) || e < 30) return false; // encre noire exclue
+  return g >= b ? g - b <= 0.42 * e : b - g <= 0.67 * e;
+};
 
 // Positions des pics d'un profil (centres des lignes du tableau)
 function pics(profil, seuil, ecartMin) {
@@ -94,12 +115,22 @@ export function trouverGrille(canvas) {
   if (L.length < 10) throw new Error("Lignes du tableau introuvables. Refaites le scan avec toute la feuille bien visible.");
   const ecarts = L.slice(1).map((y, i) => y - L[i]);
   g.pas = mediane(ecarts);
-  let i0 = ecarts.findIndex((e) => e > g.pas * 1.4);
-  i0 = i0 < 0 ? 0 : i0 + 1;
-  const bornes = [L[i0]];
-  for (let i = i0; i < L.length - 1; i++) {
+  // Les jours = la plus longue suite de traits régulièrement espacés (l'en-tête, plus haut, est exclu).
+  // Un écart double (trait effacé) compte pour deux lignes.
+  let debut = 0, best = [0, 0];
+  ecarts.forEach((e, i) => {
+    const k = Math.round(e / g.pas);
+    const regulier = k >= 1 && k <= 2 && Math.abs(e - k * g.pas) < g.pas * 0.25;
+    if (!regulier) {
+      debut = i + 1;
+      return;
+    }
+    if (i + 1 - debut > best[1] - best[0]) best = [debut, i + 1];
+  });
+  const bornes = [L[best[0]]];
+  for (let i = best[0]; i < best[1]; i++) {
     const ecart = L[i + 1] - L[i];
-    const n = Math.max(1, Math.round(ecart / g.pas)); // trait effacé : on coupe en lignes régulières
+    const n = Math.max(1, Math.round(ecart / g.pas));
     for (let k = 1; k <= n; k++) bornes.push(L[i] + (ecart * k) / n);
   }
   g.bornes = bornes;
@@ -144,13 +175,61 @@ function lireCase(g, x0, x1, y0, y1) {
 function texteDeCase(c) {
   if (c.part < 0.003) return ""; // case vide
   if (c.part < 0.006) return "OK?"; // très peu d'encre
-  if (c.rouge >= 0.15) return c.largeur < 0.4 ? "CP?" : "Repos"; // « CP » est court, « Repos » est long
+  if (c.rouge >= 0.4) return c.largeur < 0.4 ? "CP?" : "Repos"; // « CP » est court, « Repos » est long
+  if (c.rouge >= 0.2) return "Repos?";
   return c.largeur > 0.42 ? "OK?" : "OK"; // écriture longue en bleu : « École », un prénom… à vérifier
+}
+
+// Image de contrôle : le scan avec la grille trouvée et ce qui a été lu dans chaque case
+function dessinerApercu(g, lectures) {
+  const k = 900 / g.w;
+  const c = document.createElement("canvas");
+  c.width = 900;
+  c.height = Math.round(g.h * k);
+  const big = document.createElement("canvas");
+  big.width = g.w;
+  big.height = g.h;
+  big.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(g.d), g.w, g.h), 0, 0);
+  const ctx = c.getContext("2d");
+  ctx.drawImage(big, 0, 0, c.width, c.height);
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "rgba(0,170,80,.9)";
+  for (const x of g.lignesV) {
+    ctx.beginPath();
+    ctx.moveTo(x * k, 0);
+    ctx.lineTo(x * k, c.height);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = "rgba(0,90,255,.7)";
+  ctx.lineWidth = 1;
+  for (const y of g.bornes) {
+    ctx.beginPath();
+    ctx.moveTo(0, y * k);
+    ctx.lineTo(c.width, y * k);
+    ctx.stroke();
+  }
+  ctx.font = "bold 12px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (const { x0, x1, b, cases } of lectures) {
+    cases.forEach((t, i) => {
+      if (b[i + 1] == null) return;
+      const cx = ((x0 + x1) / 2) * k, cy = ((b[i] + b[i + 1]) / 2) * k;
+      const label = t || "vide";
+      ctx.fillStyle = t.startsWith("Repos") || t.startsWith("CP") ? "rgba(198,40,40,.85)" : t.endsWith("?") || !t ? "rgba(230,140,0,.9)" : "rgba(0,140,60,.85)";
+      const w = ctx.measureText(label).width + 8;
+      ctx.fillRect(cx - w / 2, cy - 8, w, 16);
+      ctx.fillStyle = "#fff";
+      ctx.fillText(label, cx, cy);
+    });
+  }
+  return c.toDataURL("image/jpeg", 0.8);
 }
 
 // colonnes : [{ nom, colonne: 1..4 }] ; dates : ["YYYY-MM-DD", …] dans l'ordre des lignes
 export function lireSurTelephone(canvas, colonnes, dates) {
   const g = trouverGrille(canvas);
+  const lectures = [];
   // Colonnes du modèle : Date | JOUR | Vendeur 1 | Vendeur 2 | Vendeur 3 | Vendeur 4 | Extra | Extra | Commentaires
   const vendeurs = [];
   for (const { nom, colonne } of colonnes) {
@@ -159,9 +238,17 @@ export function lireSurTelephone(canvas, colonnes, dates) {
     const b = recaler(g, g.bornes, lignesDansBande(g, x0, x1));
     const cases = dates.map((_, i) => (b[i + 1] != null ? texteDeCase(lireCase(g, x0, x1, b[i], b[i + 1])) : "?"));
     vendeurs.push({ nom, cases });
+    lectures.push({ x0, x1, b, cases });
   }
+  const apercu = dessinerApercu(g, lectures);
   const manquants = dates.length - (g.bornes.length - 1);
+  if (manquants > 2) {
+    const err = new Error(`Seulement ${g.bornes.length - 1} lignes de jours trouvées sur ${dates.length}. Refaites le scan bien à plat, toute la feuille visible (voir l'image de contrôle).`);
+    err.apercu = apercu;
+    throw err;
+  }
   return {
+    apercu,
     dates,
     vendeurs,
     extras: [],

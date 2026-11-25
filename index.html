@@ -10,8 +10,8 @@
   <link rel="icon" type="image/png" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <meta name="apple-mobile-web-app-title" content="Fiches">
-  <link rel="stylesheet" href="styles.css?v=8">
-  <script type="module" src="app.js?v=8"></script>
+  <link rel="stylesheet" href="styles.css?v=9">
+  <script type="module" src="app.js?v=9"></script>
 </head>
 <body>
   <header class="topbar no-print">
@@ -31,6 +31,11 @@
       <div id="thumbs" class="thumbs"></div>
       <button id="btn-analyser" class="big-btn" type="button" hidden>Lire le planning et remplir les fiches</button>
       <p id="status" class="status" role="status" aria-live="polite"></p>
+      <details id="controle" class="controle" hidden>
+        <summary>Voir ce que le téléphone a lu</summary>
+        <p class="small">Traits verts : colonnes trouvées. Traits bleus : lignes des jours. Étiquettes : ce qui a été lu dans chaque case.</p>
+        <img alt="Image de contrôle de la lecture">
+      </details>
       <p class="small"><a href="#" id="link-manuel">Ou remplir à la main, sans photo</a></p>
     </section>
 
@@ -89,7 +94,7 @@
         <button type="button" id="s-clear" class="link-btn danger">Effacer tous les horaires enregistrés</button>
       </fieldset>
 
-      <p class="small version">Version 8</p>
+      <p class="small version">Version 9</p>
       <div class="dialog-actions">
         <button value="cancel" type="submit" class="big-btn">Annuler</button>
         <button value="save" type="submit" class="big-btn primary" id="s-save">Enregistrer</button>
