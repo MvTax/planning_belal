@@ -1,6 +1,6 @@
 // Planning boutique — planning du mois en quelques gestes → fiches de présence remplies → impression.
 // Tout tourne dans le navigateur ; les données restent sur le téléphone (localStorage).
-import { initPlanning, joursDuMois } from "./planning.js?v=16";
+import { initPlanning, joursDuMois } from "./planning.js?v=17";
 
 const MODEL = "claude-opus-5-5";
 const DELAI_MAX_MS = 75000; // au-delà, on arrête et on affiche un message
@@ -37,6 +37,7 @@ const DEFAULT_SETTINGS = {
   employes: VENDEURS_DEFAUT.map((v) => ({ ...v, boutique: "NOA", actif: true, horaires: HORAIRES_DEFAUT, repos: [] })),
   extras: ["Sérine", "Lisa", "Sarra", "Katy", "Shaily"],
   taille: "grand",
+  tarifExtra: 100,
 };
 
 // ---------- Stockage local (protégé : peut échouer en navigation privée) ----------
@@ -84,6 +85,7 @@ for (const v of VENDEURS_DEFAUT) {
 }
 state.settings.extras ||= structuredClone(DEFAULT_SETTINGS.extras);
 state.settings.taille ||= "grand";
+state.settings.tarifExtra ??= 100;
 const appliquerTaille = () => {
   document.documentElement.classList.remove("t-normal", "t-grand", "t-tres");
   document.documentElement.classList.add(`t-${state.settings.taille}`);
@@ -365,7 +367,7 @@ function datesDuMois(mois) {
 }
 
 async function lireSurLeTelephone(file) {
-  const { lireSurTelephone } = await import("./lecteur.js?v=16");
+  const { lireSurTelephone } = await import("./lecteur.js?v=17");
   const colonnes = state.settings.employes
     .filter((e) => e.colonne >= 1 && e.colonne <= 4)
     .map((e) => ({ nom: e.nom, colonne: Number(e.colonne) }));
@@ -419,7 +421,7 @@ async function choisirModelesGemini(ai) {
 }
 
 async function lireAvecGemini(images) {
-  const { GoogleGenAI, ApiError } = await import("./vendor/gemini.js?v=16");
+  const { GoogleGenAI, ApiError } = await import("./vendor/gemini.js?v=17");
   // Pas de longues relances silencieuses : 1 nouvel essai maximum, et une limite de temps
   const ai = new GoogleGenAI({
     apiKey: state.geminiKey,
@@ -489,7 +491,7 @@ async function lireAvecGemini(images) {
 
 // ----- Claude (Anthropic) -----
 async function lireAvecClaude(images) {
-  const { Anthropic } = await import("./vendor/anthropic.js?v=16");
+  const { Anthropic } = await import("./vendor/anthropic.js?v=17");
   const client = new Anthropic({ apiKey: state.apiKey, dangerouslyAllowBrowser: true, maxRetries: 1, timeout: DELAI_MAX_MS });
 
   let response;
@@ -754,7 +756,7 @@ function onEditionHoraire(ev) {
 
 // ---------- Impression / PDF ----------
 async function genererPDF() {
-  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=16");
+  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=17");
   const sheets = [...document.querySelectorAll("#sheets .sheet")];
   // Rendu hors écran à taille réelle (sans la réduction de l'aperçu)
   const stage = document.createElement("div");
@@ -818,6 +820,7 @@ function imprimer() {
 function rendreReglages() {
   document.getElementById("s-apikey").value = state.apiKey;
   for (const r of document.querySelectorAll('input[name="taille"]')) r.checked = r.value === state.settings.taille;
+  document.getElementById("s-tarif").value = state.settings.tarifExtra;
   document.getElementById("s-geminikey").value = state.geminiKey;
   for (const r of document.querySelectorAll('input[name="provider"]')) r.checked = r.value === state.provider;
   afficherChampCle();
@@ -901,6 +904,8 @@ function lireReglages() {
   }
   state.settings.employes = employes;
   state.settings.taille = document.querySelector('input[name="taille"]:checked')?.value || "grand";
+  const tarif = Number(document.getElementById("s-tarif").value);
+  state.settings.tarifExtra = Number.isFinite(tarif) && tarif >= 0 ? tarif : 100;
   state.apiKey = document.getElementById("s-apikey").value.trim();
   state.geminiKey = document.getElementById("s-geminikey").value.trim();
   state.provider = document.querySelector('input[name="provider"]:checked')?.value || "local";
@@ -1051,6 +1056,7 @@ function init() {
   planning = initPlanning({
     vendeurs: vendeursDuPlanning,
     extrasConnus: () => state.settings.extras,
+    tarifDefaut: () => state.settings.tarifExtra,
     ajouterExtra: (nom) => {
       if (!state.settings.extras.includes(nom)) state.settings.extras.push(nom);
       save();
@@ -1063,7 +1069,7 @@ function init() {
 
   // Scan réel (caméra) ou simulation avec la photo du planning de novembre 2026
   const scanner = async (options) => {
-    const { openScanner } = await import("./scanner.js?v=16");
+    const { openScanner } = await import("./scanner.js?v=17");
     const { pages, finished } = await openScanner(options);
     if (!pages.length) return;
     state.photos.push(...pages);
@@ -1082,7 +1088,7 @@ function init() {
   $("btn-simulation").addEventListener("click", () => {
     state.mois = $("mois").value = "2026-11"; // la photo de test est le planning de novembre 2026
     save();
-    scanner({ image: "test/planning-novembre-2026.jpg?v=16" });
+    scanner({ image: "test/planning-novembre-2026.jpg?v=17" });
   });
   $("thumbs").addEventListener("click", (ev) => {
     const i = ev.target.dataset?.i;

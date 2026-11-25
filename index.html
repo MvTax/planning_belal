@@ -10,8 +10,8 @@
   <link rel="icon" type="image/png" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <meta name="apple-mobile-web-app-title" content="Planning">
-  <link rel="stylesheet" href="styles.css?v=16">
-  <script type="module" src="app.js?v=16"></script>
+  <link rel="stylesheet" href="styles.css?v=17">
+  <script type="module" src="app.js?v=17"></script>
 </head>
 <body class="en-planning">
   <section id="vue-planning" class="no-print" aria-label="Planning du mois">
@@ -24,9 +24,19 @@
         </div>
         <button id="pl-reglages" class="pl-engrenage" type="button" aria-label="Réglages"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M10.6 2.5h2.8l.5 2.3c.5.2 1 .4 1.4.7l2.2-.8 1.4 2.4-1.7 1.6c.1.5.1 1 0 1.5l1.7 1.6-1.4 2.4-2.2-.8c-.4.3-.9.5-1.4.7l-.5 2.3h-2.8l-.5-2.3c-.5-.2-1-.4-1.4-.7l-2.2.8-1.4-2.4 1.7-1.6a5 5 0 0 1 0-1.5L5.1 7.1l1.4-2.4 2.2.8c.4-.3.9-.5 1.4-.7zM12 9.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6z" transform="translate(0 2.4) scale(1 .98)"/></svg></button>
       </div>
-      <div id="pl-cols" class="pl-cols"></div>
+      <div class="pl-onglets" role="tablist" aria-label="Affichage">
+        <button type="button" role="tab" data-page="0" class="actif">Planning</button>
+        <button type="button" role="tab" data-page="1">Extras payés</button>
+      </div>
+      <div class="pl-entetes">
+        <div id="pl-cols" class="pl-cols"></div>
+        <div id="pl-cols-com" class="pl-cols-com"></div>
+      </div>
     </div>
-    <div id="pl-grille" class="pl-grille"></div>
+    <div id="pl-pages" class="pl-pages">
+      <div id="pl-grille" class="pl-grille pl-page"></div>
+      <div id="pl-com" class="pl-grille pl-page"></div>
+    </div>
     <div class="pl-pied">
       <button id="pl-fiches" class="big-btn primary pl-gros" type="button">Préparer les fiches du mois</button>
       <p class="pl-astuce">Appuyez sur une case, glissez sur le bon choix, relâchez.</p>
@@ -127,6 +137,17 @@
       </section>
 
       <section class="groupe">
+        <h3 class="groupe-titre">Extras</h3>
+        <div class="liste">
+          <label class="ligne"><span class="ligne-nom">Tarif d'un extra par jour</span>
+            <input type="number" id="s-tarif" inputmode="numeric" min="0" step="5" class="champ-euro" aria-label="Tarif d'un extra en euros">
+            <span class="euro">€</span>
+          </label>
+        </div>
+        <p class="groupe-note">Le tarif proposé sur la page « Extras payés ». On peut le changer jour par jour (par exemple 60 €).</p>
+      </section>
+
+      <section class="groupe">
         <h3 class="groupe-titre">Lire un planning papier</h3>
         <div class="liste">
           <label class="ligne choix"><input type="radio" name="provider" value="local"><span class="ligne-nom">Sur le téléphone<small>Gratuit, sans internet</small></span></label>
@@ -154,7 +175,7 @@
         </div>
       </section>
 
-      <p class="version">Version 16</p>
+      <p class="version">Version 17</p>
     </form>
   </dialog>
 </body>

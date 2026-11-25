@@ -323,7 +323,7 @@ body { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
   border: 0; padding: 0; margin: 0; min-width: 0;
   background: transparent; border-radius: 12px; cursor: pointer;
   display: flex; flex-direction: column; align-items: stretch; justify-content: center;
-  font: inherit; color: inherit; touch-action: pan-y;
+  font: inherit; color: inherit; touch-action: pan-x pan-y;
   -webkit-tap-highlight-color: transparent;
   transition: transform .12s ease;
 }
@@ -796,3 +796,85 @@ dialog#settings {
 .ligne.emp-top input.emp-nom { text-align: left; color: var(--sys-label); font-size: calc(18px * var(--t)); flex: 1; }
 .emp-h summary.ligne { color: var(--sys-label); font-size: calc(16px * var(--t)); }
 .emp-h summary .ligne-nom { color: var(--sys-label); font-size: inherit; }
+
+/* =====================================================================
+   DEUX PAGES : planning | extras payés — aimantées, sans glissement libre
+   ===================================================================== */
+.pl-pages {
+  display: flex; overflow-x: auto; overflow-y: hidden;
+  scroll-snap-type: x mandatory; overscroll-behavior-x: none; -webkit-overflow-scrolling: auto;
+  scrollbar-width: none; touch-action: pan-x pan-y;
+}
+.pl-pages::-webkit-scrollbar { display: none; }
+.pl-page { flex: 0 0 100%; width: 100%; min-width: 0; scroll-snap-align: start; scroll-snap-stop: always; box-sizing: border-box; }
+.pl-pages { overflow-y: clip; }
+
+.pl-onglets {
+  display: flex; margin: 2px 0 0; padding: 2px; border-radius: 9px; background: rgba(118, 118, 128, .12);
+}
+.pl-onglets button {
+  flex: 1; border: 0; background: transparent; border-radius: 7px; min-height: 30px; font: inherit;
+  font-size: calc(13px * var(--t)); font-weight: 600; color: var(--sys-label); cursor: pointer; transition: background .2s ease, box-shadow .2s ease;
+}
+.pl-onglets button.actif { background: #fff; box-shadow: 0 3px 8px rgba(0, 0, 0, .12), 0 3px 1px rgba(0, 0, 0, .04); }
+
+.pl-entetes { position: relative; }
+.pl-cols-com { display: none; }
+.page-com .pl-cols { display: none; }
+.page-com .pl-cols-com { display: flex; }
+.pl-cols-com { align-items: center; justify-content: space-between; gap: 10px; padding: 8px 6px 8px; min-height: 36px; }
+.pl-bilan { display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: calc(14px * var(--t)); color: var(--sys-label2); }
+.pl-bilan b { color: var(--sys-label); font-weight: 700; }
+.pl-bilan .att b { color: var(--orange); }
+.pl-toutvalider { border: 0; background: none; color: var(--bleu); font: inherit; font-weight: 600; font-size: calc(15px * var(--t)); padding: 6px 4px; cursor: pointer; }
+
+.pl-lcom { display: grid; grid-template-columns: calc(50px * var(--t)) minmax(0, 1fr); gap: 8px; min-height: calc(56px * var(--t)); padding: 6px 0; box-shadow: inset 0 -.5px 0 var(--sys-sep); align-items: stretch; }
+.pl-lcom:last-child { box-shadow: none; }
+.pl-lcom.we { background: #fafafc; margin: 0 -8px; padding-left: 8px; padding-right: 8px; }
+.pl-lcom.we .pl-jn { color: var(--rouge); opacity: .75; }
+.pl-lcom.auj .pl-jd { background: var(--rouge); color: #fff; font-weight: 700; }
+.pl-lcom.auj .pl-jn { color: var(--rouge); }
+.pl-paie-cell { display: flex; align-items: stretch; min-width: 0; }
+.pl-paie-cell.flash .pl-paie { animation: plflash .4s ease; }
+.pl-paie-vide { flex: 1; display: grid; place-items: center; color: #d1d1d6; font-size: 20px; }
+.pl-paie { flex: 1; min-width: 0; display: flex; align-items: stretch; border-radius: 12px; overflow: hidden; }
+.pl-paie.attente { background: rgba(255, 149, 0, .10); box-shadow: inset 0 0 0 1.5px rgba(255, 149, 0, .45); }
+.pl-paie.ok { background: rgba(52, 199, 89, .13); }
+.pl-paie-corps {
+  flex: 1; min-width: 0; border: 0; background: transparent; padding: 6px 12px; text-align: left; font: inherit; color: inherit; cursor: pointer;
+  display: flex; flex-direction: column; justify-content: center; gap: 1px; -webkit-tap-highlight-color: transparent;
+}
+.pl-paie-corps:active { background: rgba(0, 0, 0, .05); }
+.pl-paie-calc { font-size: calc(17px * var(--t)); font-weight: 600; letter-spacing: -.02em; white-space: nowrap; }
+.pl-paie-calc b { font-weight: 800; }
+.pl-paie.ok .pl-paie-calc { color: #1f7a3a; }
+.pl-paie-qui { font-size: calc(12.5px * var(--t)); color: var(--sys-label2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-paie.attente .pl-paie-qui { color: #b36b00; }
+.pl-paie-valider {
+  flex: none; width: calc(58px * var(--t)); border: 0; background: transparent; cursor: pointer; position: relative; -webkit-tap-highlight-color: transparent;
+}
+.pl-paie-valider::before { content: ""; position: absolute; left: 50%; top: 50%; width: 32px; height: 32px; margin: -16px 0 0 -16px; border-radius: 50%; border: 2px solid var(--orange); box-sizing: border-box; }
+.pl-paie-valider::after { content: ""; position: absolute; left: 50%; top: 50%; width: 10px; height: 5px; margin: -4px 0 0 -5px; border: solid var(--orange); border-width: 0 0 2.5px 2.5px; transform: rotate(-45deg); }
+.pl-paie-valider:active::before { background: rgba(255, 149, 0, .25); }
+.pl-paie-coche { flex: none; width: calc(58px * var(--t)); position: relative; }
+.pl-paie-coche::before { content: ""; position: absolute; left: 50%; top: 50%; width: 32px; height: 32px; margin: -16px 0 0 -16px; border-radius: 50%; background: var(--vert); }
+.pl-paie-coche::after { content: ""; position: absolute; left: 50%; top: 50%; width: 10px; height: 5px; margin: -4px 0 0 -5px; border: solid #fff; border-width: 0 0 2.5px 2.5px; transform: rotate(-45deg); }
+
+/* Feuille de paiement */
+.paie-rapide { display: flex; gap: 8px; margin-bottom: 10px; }
+.paie-rapide button { flex: 1; min-height: 44px; border: 0; border-radius: 12px; background: var(--sys-carte); color: var(--bleu); font: inherit; font-weight: 600; font-size: calc(15px * var(--t)); }
+.paie-lignes { background: var(--sys-carte); border-radius: 12px; overflow: hidden; }
+.paie-ligne { display: flex; align-items: center; gap: 10px; padding: 8px 12px; min-height: 64px; box-shadow: inset 0 -.5px 0 var(--sys-sep); }
+.paie-ligne:last-child { box-shadow: none; }
+.paie-nom { flex: 1; font-size: calc(18px * var(--t)); font-weight: 600; }
+.paie-val { min-width: 78px; text-align: center; font-size: calc(20px * var(--t)); font-weight: 800; letter-spacing: -.02em; }
+.paie-pas { width: 48px; height: 48px; border: 0; border-radius: 50%; background: rgba(0, 122, 255, .12); color: var(--bleu); font-size: 28px; line-height: 1; font-weight: 500; cursor: pointer; }
+.paie-pas:active { background: rgba(0, 122, 255, .28); }
+.paie-total { text-align: center; font-size: calc(20px * var(--t)); margin: 14px 0 0; }
+.paie-total b { font-weight: 800; }
+.paie-secondaire { background: var(--sys-carte) !important; color: var(--bleu) !important; }
+.paie-valider-gros { background: var(--vert) !important; color: #fff !important; }
+.feuille-actions .paie-valider-gros, .feuille-actions .paie-secondaire { min-height: 56px; }
+.champ-euro { max-width: 90px; }
+.euro { color: var(--sys-label2); flex: none; }
+.ligne input[type="number"] { flex: 1; text-align: right; background: transparent; border: 0; font-size: calc(16px * var(--t)); color: var(--bleu); padding: 4px 0; min-width: 0; -moz-appearance: textfield; }

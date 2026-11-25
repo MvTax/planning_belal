@@ -75,6 +75,9 @@ export function initPlanning(ctx) {
   //         onFiches(mois, donnees), ouvrirReglages() }
   const racine = document.getElementById("vue-planning");
   const grille = racine.querySelector("#pl-grille");
+  const pageCom = racine.querySelector("#pl-com");
+  const entetePaie = racine.querySelector("#pl-cols-com");
+  const pages = racine.querySelector("#pl-pages");
   const titre = racine.querySelector("#pl-titre");
   const entete = racine.querySelector("#pl-cols");
   let mois = lire("fp.pl.courant", null) || `${new Date().getFullYear()}-${pad(new Date().getMonth() + 1)}`;
@@ -127,10 +130,12 @@ export function initPlanning(ctx) {
           })
           .join("");
         const ex = j.extras || [];
+        const jourHtml = `<div class="pl-jour"><span class="pl-jn">${JC[ji]}</span><span class="pl-jd">${d.getDate()}</span>${ferie ? `<span class="pl-ferie">Férié</span>` : ""}</div>`;
         return {
           lundi: ji === 0,
+          com: `<div class="pl-lcom ${classes.slice(1).join(" ")}" data-date="${k}">${jourHtml}<div class="pl-paie-cell">${cellulePaie(k)}</div></div>`,
           html: `<div class="${classes.join(" ")}">
-          <div class="pl-jour"><span class="pl-jn">${JC[ji]}</span><span class="pl-jd">${d.getDate()}</span>${ferie ? `<span class="pl-ferie">Férié</span>` : ""}</div>
+          ${jourHtml}
           ${cases}
           <button type="button" class="pl-case pl-extra" data-date="${k}" data-col="extras" aria-label="Renforts du ${JOURS[ji]} ${d.getDate()}">${puceExtras(ex)}</button>
         </div>`,
@@ -139,10 +144,65 @@ export function initPlanning(ctx) {
     // Une carte blanche par semaine, comme les pages d'un agenda
     const semaines = [];
     for (const l of lignes) {
-      if (l.lundi || !semaines.length) semaines.push([]);
-      semaines[semaines.length - 1].push(l.html);
+      if (l.lundi || !semaines.length) semaines.push({ a: [], b: [] });
+      semaines[semaines.length - 1].a.push(l.html);
+      semaines[semaines.length - 1].b.push(l.com);
     }
-    grille.innerHTML = semaines.map((s) => `<section class="pl-semaine">${s.join("")}</section>`).join("");
+    grille.innerHTML = semaines.map((w) => `<section class="pl-semaine">${w.a.join("")}</section>`).join("");
+    pageCom.innerHTML = semaines.map((w) => `<section class="pl-semaine">${w.b.join("")}</section>`).join("");
+    resumePaie();
+  }
+
+  // ----- Extras payés (colonne « commentaires » du planning papier) -----
+  const euros = (n) => `${Math.round(n * 100) / 100} €`.replace(/\B(?=(\d{3})+(?!\d))/g, "\u202f");
+  const tarifDe = (j, nom) => Number(j.paie?.tarifs?.[nom] ?? ctx.tarifDefaut());
+  const signature = (j) => (j.extras || []).map((n) => `${n}:${tarifDe(j, n)}`).join("|");
+  const estValide = (j) => !!(j.extras || []).length && j.paie?.valide === signature(j);
+  const totalJour = (j) => (j.extras || []).reduce((t, n) => t + tarifDe(j, n), 0);
+  function libelleTarifs(j) {
+    const t = (j.extras || []).map((n) => tarifDe(j, n));
+    if (t.every((x) => x === t[0])) return t.length === 1 ? `${t[0]} €` : `${t[0]} € × ${t.length}`;
+    return t.map((x) => x).join(" + ") + " €";
+  }
+  function cellulePaie(k) {
+    const j = donnees.jours[k] || {};
+    if (!(j.extras || []).length) return `<span class="pl-paie-vide">–</span>`;
+    const ok = estValide(j);
+    const nom = (j.extras || []).map(prenom).join(", ");
+    return `<div class="pl-paie ${ok ? "ok" : "attente"}" data-date="${k}">
+      <button type="button" class="pl-paie-corps" data-act="ouvrir" data-date="${k}" aria-label="Extras du ${k}, ${esc(libelleTarifs(j))}">
+        <span class="pl-paie-calc">${esc(libelleTarifs(j))}${(j.extras || []).length > 1 || true ? ` <b>= ${euros(totalJour(j))}</b>` : ""}</span>
+        <span class="pl-paie-qui">${esc(nom)}${ok ? "" : " · à valider"}</span>
+      </button>
+      ${ok
+        ? `<span class="pl-paie-coche" aria-hidden="true"></span>`
+        : `<button type="button" class="pl-paie-valider" data-act="valider" data-date="${k}" aria-label="Valider ce paiement"></button>`}
+    </div>`;
+  }
+  function majPaie(k) {
+    const cell = pageCom.querySelector(`.pl-lcom[data-date="${k}"] .pl-paie-cell`);
+    if (cell) {
+      cell.innerHTML = cellulePaie(k);
+      cell.classList.remove("flash");
+      void cell.offsetWidth;
+      cell.classList.add("flash");
+    }
+    resumePaie();
+  }
+  function resumePaie() {
+    let ok = 0, att = 0;
+    for (const j of Object.values(donnees.jours)) {
+      if (!(j.extras || []).length) continue;
+      if (estValide(j)) ok += totalJour(j);
+      else att += totalJour(j);
+    }
+    entetePaie.innerHTML = `<div class="pl-bilan"><span><b>${euros(ok)}</b> validés</span>${att ? `<span class="att"><b>${euros(att)}</b> à valider</span>` : ""}</div>${att ? `<button type="button" class="pl-toutvalider" data-act="tout">Tout valider</button>` : ""}`;
+  }
+  function validerJour(k, oui = true) {
+    const j = (donnees.jours[k] ||= {});
+    j.paie = { ...(j.paie || {}), valide: oui ? signature(j) : null };
+    sauver();
+    majPaie(k);
   }
 
   function puce(s) {
@@ -172,6 +232,7 @@ export function initPlanning(ctx) {
     else j[col] = valeur;
     sauver();
     majCase(date, col);
+    if (col === "extras") majPaie(date);
     return avant;
   }
 
@@ -413,6 +474,110 @@ export function initPlanning(ctx) {
     });
     bandeauTimer = setTimeout(() => (bandeau.hidden = true), annuler ? 4500 : 6000);
   }
+
+  // ----- Feuille de paiement d'un jour -----
+  const paie = document.createElement("div");
+  paie.className = "feuille-voile no-print";
+  paie.hidden = true;
+  paie.innerHTML = `<div class="feuille" role="dialog" aria-label="Extras payés">
+      <p class="feuille-titre"></p>
+      <div class="paie-rapide"><button type="button" data-tout="defaut">Tout à <span class="td"></span> €</button><button type="button" data-tout="60">Tout à 60 €</button></div>
+      <div class="paie-lignes"></div>
+      <p class="paie-total"></p>
+      <div class="feuille-actions"><button type="button" class="paie-secondaire"></button><button type="button" class="paie-valider-gros"></button></div>
+    </div>`;
+  document.body.appendChild(paie);
+  let paieDate = null;
+
+  function dessinerPaie() {
+    const j = donnees.jours[paieDate] || {};
+    const d = new Date(paieDate + "T12:00:00");
+    paie.querySelector(".feuille-titre").textContent = `Extras du ${JOURS[jourIdx(d)]} ${d.getDate()}`;
+    paie.querySelector(".td").textContent = ctx.tarifDefaut();
+    paie.querySelector(".paie-lignes").innerHTML = (j.extras || [])
+      .map(
+        (n) => `<div class="paie-ligne"><span class="paie-nom">${esc(n)}</span>
+          <button type="button" class="paie-pas" data-nom="${esc(n)}" data-pas="-10" aria-label="Moins 10 euros">−</button>
+          <span class="paie-val">${tarifDe(j, n)} €</span>
+          <button type="button" class="paie-pas" data-nom="${esc(n)}" data-pas="10" aria-label="Plus 10 euros">+</button></div>`,
+      )
+      .join("");
+    paie.querySelector(".paie-total").innerHTML = `Total : <b>${euros(totalJour(j))}</b>`;
+    const ok = estValide(j);
+    const sec = paie.querySelector(".paie-secondaire");
+    sec.textContent = ok ? "Remettre à valider" : "Fermer";
+    sec.dataset.act = ok ? "devalider" : "fermer";
+    paie.querySelector(".paie-valider-gros").textContent = ok ? "Terminé" : "Valider";
+    paie.querySelector(".paie-valider-gros").dataset.act = ok ? "fermer" : "valider";
+  }
+  function ouvrirPaie(k) {
+    paieDate = k;
+    dessinerPaie();
+    paie.hidden = false;
+    requestAnimationFrame(() => paie.classList.add("ouvert"));
+  }
+  function fermerPaie() {
+    paie.classList.remove("ouvert");
+    paie.hidden = true;
+    if (paieDate) majPaie(paieDate);
+    paieDate = null;
+  }
+  paie.addEventListener("click", (e) => {
+    if (e.target === paie) return fermerPaie();
+    const j = (donnees.jours[paieDate] ||= {});
+    const pas = e.target.closest(".paie-pas");
+    const tout = e.target.closest("[data-tout]")?.dataset.tout;
+    const act = e.target.closest("[data-act]")?.dataset.act;
+    if (pas) {
+      const t = Math.max(0, tarifDe(j, pas.dataset.nom) + Number(pas.dataset.pas));
+      j.paie = { ...(j.paie || {}), tarifs: { ...(j.paie?.tarifs || {}), [pas.dataset.nom]: t } };
+      sauver();
+      dessinerPaie();
+    } else if (tout) {
+      const t = tout === "defaut" ? ctx.tarifDefaut() : Number(tout);
+      j.paie = { ...(j.paie || {}), tarifs: Object.fromEntries((j.extras || []).map((n) => [n, t])) };
+      sauver();
+      dessinerPaie();
+    } else if (act === "valider") {
+      validerJour(paieDate, true);
+      fermerPaie();
+    } else if (act === "devalider") {
+      validerJour(paieDate, false);
+      dessinerPaie();
+    } else if (act === "fermer") fermerPaie();
+  });
+
+  pageCom.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-act]");
+    if (!b) return;
+    if (b.dataset.act === "valider") {
+      validerJour(b.dataset.date, true);
+      toast(`Extras du ${Number(b.dataset.date.slice(8))} validés`, () => validerJour(b.dataset.date, false));
+    } else if (b.dataset.act === "ouvrir") ouvrirPaie(b.dataset.date);
+  });
+  entetePaie.addEventListener("click", (e) => {
+    if (!e.target.closest('[data-act="tout"]')) return;
+    const avant = Object.entries(donnees.jours).filter(([, j]) => (j.extras || []).length && !estValide(j)).map(([k]) => k);
+    for (const k of avant) validerJour(k, true);
+    toast(`${avant.length} jour${avant.length > 1 ? "s" : ""} validé${avant.length > 1 ? "s" : ""}`, () => avant.forEach((k) => validerJour(k, false)));
+  });
+
+  // ----- Deux pages à l'horizontale : planning | extras payés (aimantées, pas de glissement libre) -----
+  const onglets = [...racine.querySelectorAll(".pl-onglets button")];
+  let pageActive = 0;
+  function afficherPage(n) {
+    pageActive = n;
+    racine.classList.toggle("page-com", n === 1);
+    onglets.forEach((b, i) => b.classList.toggle("actif", i === n));
+  }
+  let tAttente;
+  pages.addEventListener("scroll", () => {
+    clearTimeout(tAttente);
+    const n = pages.scrollLeft > pages.clientWidth / 2 ? 1 : 0;
+    if (n !== pageActive) afficherPage(n);
+    tAttente = setTimeout(() => afficherPage(Math.round(pages.scrollLeft / pages.clientWidth)), 80);
+  }, { passive: true });
+  onglets.forEach((b) => b.addEventListener("click", () => pages.scrollTo({ left: Number(b.dataset.page) * pages.clientWidth, behavior: "smooth" })));
 
   // ----- Navigation entre les mois -----
   function decaler(n) {
