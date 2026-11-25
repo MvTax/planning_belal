@@ -674,6 +674,14 @@ export function initPlanning(ctx) {
     },
     mois: () => mois,
     donnees: () => donnees,
+    // Texte de la colonne « Commentaires » imprimée : paiement validé + note
+    commentaire: (k) => {
+      const j = donnees.jours[k] || {};
+      const p = estValide(j) ? libelleTarifs(j) : "";
+      return [p, (j.note || "").trim()].filter(Boolean).join(" · ");
+    },
+    nonValides: () => Object.values(donnees.jours).filter((j) => (j.extras || []).length && !estValide(j)).length,
+    allerExtras: () => pages.scrollTo({ left: pages.clientWidth, behavior: "auto" }),
     toast,
   };
 }

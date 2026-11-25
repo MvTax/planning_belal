@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Planning boutique</title>
-  <meta name="description" content="Planning du mois en quelques gestes, fiches de présence remplies et imprimées en un bouton.">
+  <meta name="description" content="Planning du mois en quelques gestes, planning et fiches de présence prêts à imprimer.">
   <meta name="theme-color" content="#f2f2f7">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <meta name="apple-mobile-web-app-title" content="Planning">
-  <link rel="stylesheet" href="styles.css?v=19">
-  <script type="module" src="app.js?v=19"></script>
+  <link rel="stylesheet" href="styles.css?v=22">
+  <script type="module" src="app.js?v=22"></script>
 </head>
 <body class="en-planning">
   <section id="vue-planning" class="no-print" aria-label="Planning du mois">
@@ -38,60 +38,34 @@
       <div id="pl-com" class="pl-grille pl-page"></div>
     </div>
     <div class="pl-pied">
-      <button id="pl-fiches" class="big-btn primary pl-gros" type="button">Préparer les fiches du mois</button>
+      <button id="pl-fiches" class="big-btn primary pl-gros" type="button">Voir mes fiches du mois</button>
       <p class="pl-astuce">Appuyez sur une case, glissez sur le bon choix, relâchez.</p>
     </div>
   </section>
 
   <div id="vue-fiches" hidden>
-  <header class="topbar no-print">
-    <h1>Fiches de présence</h1>
-    <button id="btn-settings" class="icon-btn" type="button" aria-label="Réglages">
-      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>
-    </button>
-  </header>
+    <header class="topbar no-print">
+      <h1>Fiches</h1>
+      <button id="btn-settings" class="icon-btn" type="button" aria-label="Réglages">
+        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M10.6 2.5h2.8l.5 2.3c.5.2 1 .4 1.4.7l2.2-.8 1.4 2.4-1.7 1.6c.1.5.1 1 0 1.5l1.7 1.6-1.4 2.4-2.2-.8c-.4.3-.9.5-1.4.7l-.5 2.3h-2.8l-.5-2.3c-.5-.2-1-.4-1.4-.7l-2.2.8-1.4-2.4 1.7-1.6a5 5 0 0 1 0-1.5L5.1 7.1l1.4-2.4 2.2.8c.4-.3.9-.5 1.4-.7zM12 9.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6z" transform="translate(0 2.4) scale(1 .98)"/></svg>
+      </button>
+    </header>
 
-  <main class="no-print">
-    <section class="card" id="vide-fiches">
-      <h2>Aucune fiche pour l'instant</h2>
-      <p class="hint">Remplissez le planning, puis appuyez sur « Préparer les fiches du mois ».</p>
-    </section>
-    <section class="card" id="step-result" hidden>
-      <h2>Fiches prêtes</h2>
-      <div class="actions">
-        <button id="btn-print" class="big-btn primary" type="button">Imprimer</button>
-        <button id="btn-pdf" class="big-btn" type="button">Enregistrer / partager en PDF</button>
-      </div>
-      <div class="period">
-        <label>Du <input type="date" id="p-debut"></label>
-        <label>au <input type="date" id="p-fin"></label>
-      </div>
-      <p id="remarques" class="remarques" hidden></p>
-      <details id="review">
-        <summary>Vérifier / corriger les horaires</summary>
-        <div id="review-body"></div>
-      </details>
-    </section>
-    <section class="card" id="step-photo">
-      <h2>Planning sur papier ?</h2>
-      <p class="hint">Scannez la feuille : elle est recadrée, redressée et lue automatiquement.</p>
-      <label class="mois">Mois du planning <input type="month" id="mois"></label>
-      <button id="btn-scan" class="big-btn primary" type="button">Scanner le planning</button>
-      <button id="btn-simulation" class="big-btn" type="button">Simulation scan (planning de novembre)</button>
-      <div id="thumbs" class="thumbs"></div>
-      <button id="btn-analyser" class="big-btn" type="button" hidden>Lire le planning et remplir les fiches</button>
-      <p id="status" class="status" role="status" aria-live="polite"></p>
-      <details id="controle" class="controle" hidden>
-        <summary>Voir ce que le téléphone a lu</summary>
-        <p class="small">Traits verts : colonnes trouvées. Traits bleus : lignes des jours. Étiquettes : ce qui a été lu dans chaque case.</p>
-        <img alt="Image de contrôle de la lecture">
-      </details>
-      <p class="small"><a href="#" id="link-manuel">Ou remplir à la main, sans photo</a></p>
-    </section>
+    <main class="no-print">
+      <section class="card" id="fiches-resume">
+        <p class="fiches-mois" id="fiches-mois"></p>
+        <p class="hint" id="fiches-detail"></p>
+        <div id="fiches-alerte" class="fiches-alerte" hidden>
+          <span id="fiches-alerte-txt"></span>
+          <button type="button" id="fiches-valider">Aller les valider</button>
+        </div>
+        <button id="btn-pdf" class="big-btn primary" type="button"><span>Récupérer mes fiches</span></button>
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+        <p class="small">Un seul PDF : le planning du mois, puis la fiche de chaque salarié. Choisissez ensuite « Imprimer ».</p>
+      </section>
+    </main>
 
-  </main>
-
-  <div id="sheets" aria-label="Aperçu des fiches"></div>
+    <div id="sheets" aria-label="Aperçu des pages"></div>
   </div>
 
   <nav class="onglets no-print" aria-label="Navigation">
@@ -148,34 +122,14 @@
       </section>
 
       <section class="groupe">
-        <h3 class="groupe-titre">Lire un planning papier</h3>
-        <div class="liste">
-          <label class="ligne choix"><input type="radio" name="provider" value="local"><span class="ligne-nom">Sur le téléphone<small>Gratuit, sans internet</small></span></label>
-          <label class="ligne choix"><input type="radio" name="provider" value="gemini"><span class="ligne-nom">Google Gemini<small>Lit tout le texte écrit</small></span></label>
-          <label class="ligne choix"><input type="radio" name="provider" value="claude"><span class="ligne-nom">Claude<small>Lit tout le texte écrit</small></span></label>
-          <div data-for="local" class="ligne ligne-note">Reconnaît la couleur de l'encre dans la colonne de chaque salarié : rouge pour Repos, bleu pour OK. Le reste est signalé pour être vérifié.</div>
-          <div data-for="gemini" class="ligne ligne-col" hidden>
-            <span class="ligne-nom">Clé Gemini</span>
-            <input type="password" id="s-geminikey" autocomplete="off" placeholder="AIza…" spellcheck="false">
-            <p class="groupe-note">À créer sur aistudio.google.com. Elle reste uniquement sur ce téléphone.</p>
-          </div>
-          <div data-for="claude" class="ligne ligne-col" hidden>
-            <span class="ligne-nom">Clé Claude</span>
-            <input type="password" id="s-apikey" autocomplete="off" placeholder="sk-ant-…" spellcheck="false">
-            <p class="groupe-note">À créer sur console.anthropic.com. Elle reste uniquement sur ce téléphone.</p>
-          </div>
-        </div>
-      </section>
-
-      <section class="groupe">
         <h3 class="groupe-titre">Données</h3>
         <div class="liste">
-          <button type="button" id="s-exemple" class="ligne ligne-action">Remettre l'exemple de novembre 2026</button>
-          <button type="button" id="s-clear" class="ligne ligne-action rouge">Effacer tous les horaires</button>
+          <button type="button" id="s-exemple" class="ligne ligne-action">Remettre le planning de novembre 2026</button>
+          <button type="button" id="s-clear" class="ligne ligne-action rouge">Effacer tous les plannings</button>
         </div>
       </section>
 
-      <p class="version">Version 19</p>
+      <p class="version">Version 22</p>
     </form>
   </dialog>
 </body>
