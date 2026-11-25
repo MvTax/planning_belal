@@ -878,3 +878,22 @@ dialog#settings {
 .champ-euro { max-width: 90px; }
 .euro { color: var(--sys-label2); flex: none; }
 .ligne input[type="number"] { flex: 1; text-align: right; background: transparent; border: 0; font-size: calc(16px * var(--t)); color: var(--bleu); padding: 4px 0; min-width: 0; -moz-appearance: textfield; }
+
+/* Notes (colonne commentaires) */
+.pl-cell-col { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+.pl-cell-col:has(.pl-paie) .pl-note:not(.plein) { padding-top: 0; }
+.pl-note {
+  display: flex; align-items: center; gap: 6px; width: 100%; min-height: 32px; padding: 4px 10px; border: 0; border-radius: 10px;
+  background: transparent; color: #aeaeb2; font: inherit; font-size: calc(14px * var(--t)); text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.pl-note:active { background: rgba(118, 118, 128, .12); }
+.pl-note-plus { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: rgba(118, 118, 128, .14); color: #8e8e93; font-size: 15px; line-height: 1; padding-bottom: 1px; }
+.pl-note.plein { background: #fff8d6; color: #4a3f10; min-height: 36px; align-items: flex-start; padding: 7px 10px; box-shadow: inset 0 0 0 .5px rgba(150, 120, 0, .25); }
+.pl-note-ico { flex: none; width: 14px; height: 14px; margin-top: 2px; background: #b38a00; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 17.25V21h3.75L17.8 9.94l-3.75-3.75zM20.7 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75z'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 17.25V21h3.75L17.8 9.94l-3.75-3.75zM20.7 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75z'/%3E%3C/svg%3E") center / contain no-repeat; }
+.pl-note-txt { flex: 1; min-width: 0; font-weight: 500; line-height: 1.25; overflow-wrap: anywhere; }
+.pl-paie-cell { flex-direction: column; }
+.note-idees { display: flex; gap: 8px; overflow-x: auto; padding: 0 0 10px; scrollbar-width: none; margin: 0 -16px; padding-left: 16px; padding-right: 16px; }
+.note-idees::-webkit-scrollbar { display: none; }
+.note-idees button { flex: none; border: 0; border-radius: 999px; padding: 9px 14px; background: var(--sys-carte); color: var(--bleu); font: inherit; font-size: calc(15px * var(--t)); font-weight: 600; }
+.note-texte { width: 100%; box-sizing: border-box; border: 0; border-radius: 12px; padding: 12px 14px; background: var(--sys-carte); font: inherit; font-size: calc(18px * var(--t)); resize: none; color: var(--sys-label); }
+.note-texte:focus { outline: 2px solid var(--bleu); }

@@ -164,9 +164,18 @@ export function initPlanning(ctx) {
     if (t.every((x) => x === t[0])) return t.length === 1 ? `${t[0]} €` : `${t[0]} € × ${t.length}`;
     return t.map((x) => x).join(" + ") + " €";
   }
+  function ligneNote(k) {
+    const n = ((donnees.jours[k] || {}).note || "").trim();
+    return n
+      ? `<button type="button" class="pl-note plein" data-act="note" data-date="${k}" aria-label="Modifier la note"><span class="pl-note-ico" aria-hidden="true"></span><span class="pl-note-txt">${esc(n)}</span></button>`
+      : `<button type="button" class="pl-note" data-act="note" data-date="${k}" aria-label="Ajouter une note"><span class="pl-note-plus" aria-hidden="true">+</span> Note</button>`;
+  }
   function cellulePaie(k) {
     const j = donnees.jours[k] || {};
-    if (!(j.extras || []).length) return `<span class="pl-paie-vide">–</span>`;
+    return `<div class="pl-cell-col">${cellulePaieHaut(k, j)}${ligneNote(k)}</div>`;
+  }
+  function cellulePaieHaut(k, j) {
+    if (!(j.extras || []).length) return "";
     const ok = estValide(j);
     const nom = (j.extras || []).map(prenom).join(", ");
     return `<div class="pl-paie ${ok ? "ok" : "attente"}" data-date="${k}">
@@ -554,12 +563,67 @@ export function initPlanning(ctx) {
       validerJour(b.dataset.date, true);
       toast(`Extras du ${Number(b.dataset.date.slice(8))} validés`, () => validerJour(b.dataset.date, false));
     } else if (b.dataset.act === "ouvrir") ouvrirPaie(b.dataset.date);
+    else if (b.dataset.act === "note") ouvrirNote(b.dataset.date);
   });
   entetePaie.addEventListener("click", (e) => {
     if (!e.target.closest('[data-act="tout"]')) return;
     const avant = Object.entries(donnees.jours).filter(([, j]) => (j.extras || []).length && !estValide(j)).map(([k]) => k);
     for (const k of avant) validerJour(k, true);
     toast(`${avant.length} jour${avant.length > 1 ? "s" : ""} validé${avant.length > 1 ? "s" : ""}`, () => avant.forEach((k) => validerJour(k, false)));
+  });
+
+  // ----- Feuille de note d'un jour -----
+  const noteF = document.createElement("div");
+  noteF.className = "feuille-voile no-print";
+  noteF.hidden = true;
+  noteF.innerHTML = `<div class="feuille" role="dialog" aria-label="Note du jour">
+      <p class="feuille-titre"></p>
+      <div class="note-idees"></div>
+      <textarea class="note-texte" rows="3" placeholder="Écrivez votre note…" aria-label="Note"></textarea>
+      <div class="feuille-actions"><button type="button" class="paie-secondaire note-suppr" data-n="suppr">Supprimer</button><button type="button" class="paie-valider-gros" data-n="ok">Enregistrer</button></div>
+    </div>`;
+  document.body.appendChild(noteF);
+  const IDEES = ["Acompte 100 €", "Acompte 50 €", "Retard", "Absent prévenu", "Extra payé 60 €"];
+  let noteDate = null;
+  const champNote = noteF.querySelector(".note-texte");
+  noteF.querySelector(".note-idees").innerHTML = IDEES.map((t) => `<button type="button" data-idee="${esc(t)}">${esc(t)}</button>`).join("");
+
+  function ouvrirNote(k) {
+    noteDate = k;
+    const d = new Date(k + "T12:00:00");
+    noteF.querySelector(".feuille-titre").textContent = `Note du ${JOURS[jourIdx(d)]} ${d.getDate()}`;
+    champNote.value = (donnees.jours[k] || {}).note || "";
+    noteF.querySelector(".note-suppr").hidden = !champNote.value;
+    noteF.hidden = false;
+    requestAnimationFrame(() => noteF.classList.add("ouvert"));
+    setTimeout(() => champNote.focus(), 250);
+  }
+  function fermerNote(enregistrer = true) {
+    if (noteDate && enregistrer) {
+      const j = (donnees.jours[noteDate] ||= {});
+      const t = champNote.value.trim();
+      if (t) j.note = t;
+      else delete j.note;
+      sauver();
+      majPaie(noteDate);
+    }
+    champNote.blur();
+    noteF.classList.remove("ouvert");
+    noteF.hidden = true;
+    noteDate = null;
+  }
+  noteF.addEventListener("click", (e) => {
+    if (e.target === noteF) return fermerNote(true);
+    const idee = e.target.closest("[data-idee]")?.dataset.idee;
+    if (idee) {
+      champNote.value = champNote.value.trim() ? `${champNote.value.trim()} · ${idee}` : idee;
+      return champNote.focus();
+    }
+    const n = e.target.closest("[data-n]")?.dataset.n;
+    if (n === "suppr") {
+      champNote.value = "";
+      fermerNote(true);
+    } else if (n === "ok") fermerNote(true);
   });
 
   // ----- Deux pages à l'horizontale : planning | extras payés (aimantées, pas de glissement libre) -----
