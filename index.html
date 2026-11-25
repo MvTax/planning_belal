@@ -10,8 +10,8 @@
   <link rel="icon" type="image/png" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <meta name="apple-mobile-web-app-title" content="Planning">
-  <link rel="stylesheet" href="styles.css?v=22">
-  <script type="module" src="app.js?v=22"></script>
+  <link rel="stylesheet" href="styles.css?v=23">
+  <script type="module" src="app.js?v=23"></script>
 </head>
 <body class="en-planning">
   <section id="vue-planning" class="no-print" aria-label="Planning du mois">
@@ -59,13 +59,30 @@
           <span id="fiches-alerte-txt"></span>
           <button type="button" id="fiches-valider">Aller les valider</button>
         </div>
-        <button id="btn-pdf" class="big-btn primary" type="button"><span>Récupérer mes fiches</span></button>
-        <p id="status" class="status" role="status" aria-live="polite"></p>
-        <p class="small">Un seul PDF : le planning du mois, puis la fiche de chaque salarié. Choisissez ensuite « Imprimer ».</p>
+        <button class="big-btn primary btn-imprimer" type="button"><span>Imprimer</span></button>
+        <p class="status statut-impression" role="status" aria-live="polite"></p>
+        <p class="small">Un seul document : le planning du mois, puis la fiche de chaque salarié.</p>
+        <details class="aide-wifi">
+          <summary>Comment imprimer en Wi-Fi ?</summary>
+          <ol>
+            <li>Allumez l'imprimante et connectez-la au même Wi-Fi que le téléphone.</li>
+            <li>Appuyez sur <b>Imprimer</b> : la liste de partage s'ouvre.</li>
+            <li>Choisissez <b>Imprimer</b> (icône d'imprimante), puis votre imprimante dans la liste.</li>
+            <li>Vérifiez « 9 pages » (ou le nombre indiqué), puis appuyez sur <b>Imprimer</b> en haut à droite.</li>
+          </ol>
+          <p class="small">Il faut une imprimante compatible <b>AirPrint</b> (la plupart des imprimantes Wi-Fi récentes). La première fois, l'iPhone la repère tout seul.</p>
+        </details>
       </section>
     </main>
 
     <div id="sheets" aria-label="Aperçu des pages"></div>
+
+    <main class="no-print fiches-bas">
+      <section class="card">
+        <button class="big-btn primary btn-imprimer" type="button"><span>Imprimer</span></button>
+        <p class="status statut-impression" role="status" aria-live="polite"></p>
+      </section>
+    </main>
   </div>
 
   <nav class="onglets no-print" aria-label="Navigation">
@@ -129,7 +146,7 @@
         </div>
       </section>
 
-      <p class="version">Version 22</p>
+      <p class="version">Version 23</p>
     </form>
   </dialog>
 </body>

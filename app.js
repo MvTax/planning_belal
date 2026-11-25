@@ -1,6 +1,6 @@
 // Planning boutique — planning du mois en quelques gestes → planning imprimé + fiches de présence (PDF).
 // Aucune IA, aucun scan : tout est saisi sur le téléphone et reste dessus (localStorage).
-import { initPlanning, joursDuMois } from "./planning.js?v=22";
+import { initPlanning, joursDuMois } from "./planning.js?v=23";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const JOURS_COURTS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -389,6 +389,9 @@ function rendreFiches() {
   alerte.hidden = !nv;
   if (nv) document.getElementById("fiches-alerte-txt").textContent = `${nv} jour${nv > 1 ? "s" : ""} d'extras pas encore validé${nv > 1 ? "s" : ""} : le montant n'est pas imprimé.`;
   ajusterApercu();
+  attenteToucher = false;
+  majBoutonsImpression();
+  planifierPreparation();
 }
 
 // Réduit chaque page à la largeur de l'écran
@@ -404,7 +407,7 @@ function ajusterApercu() {
 
 // ---------- PDF : planning du mois (paysage) + fiches (portrait) ----------
 async function genererPDF(progression) {
-  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=22");
+  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=23");
   const sheets = [...document.querySelectorAll("#sheets .sheet")];
   const stage = document.createElement("div");
   stage.style.cssText = "position:fixed;left:-10000px;top:0;";
@@ -430,37 +433,129 @@ async function genererPDF(progression) {
   }
 }
 
-async function recupererFiches() {
-  const bouton = document.getElementById("btn-pdf");
-  const etiquette = bouton.querySelector("span");
-  const statut = document.getElementById("status");
-  bouton.disabled = true;
-  statut.textContent = "";
-  try {
-    const blob = await genererPDF((i, n) => (etiquette.textContent = `Création… page ${i} sur ${n}`));
-    const [y, m] = planning.mois().split("-").map(Number);
-    const file = new File([blob], `Planning_et_fiches_${MOIS[m - 1]}_${y}.pdf`, { type: "application/pdf" });
-    if (navigator.canShare?.({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: "Planning et fiches" }); // contient « Imprimer »
-      } catch (err) {
-        if (err?.name !== "AbortError") throw err;
-      }
-    } else {
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = file.name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
-    }
-  } catch (err) {
-    statut.textContent = `Impossible de créer le PDF : ${err.message}`;
-  } finally {
-    etiquette.textContent = "Récupérer mes fiches";
-    bouton.disabled = false;
+// ----- Impression -----
+// Le PDF est préparé dès l'ouverture de l'écran : au toucher, la fenêtre d'impression s'ouvre tout de suite
+// (iOS n'autorise l'ouverture de la feuille de partage que juste après un toucher).
+let pdfPret = null; // { sig, file }
+let pdfEnCours = null; // { sig, promesse }
+let attenteToucher = false; // PDF prêt, mais un nouveau toucher est nécessaire
+let progression = "";
+let compteurPreparation = 0;
+
+const signature = () => {
+  let h = 0;
+  for (const c of pagesCourantes.join("")) h = (h * 31 + c.charCodeAt(0)) | 0;
+  return `${pagesCourantes.length}:${h}`;
+};
+const nomPDF = () => {
+  const [y, m] = planning.mois().split("-").map(Number);
+  return `Planning_et_fiches_${MOIS[m - 1]}_${y}.pdf`;
+};
+
+function majBoutonsImpression(message = "") {
+  const occupe = !!pdfEnCours;
+  let texte = "Imprimer";
+  if (occupe) texte = progression || "Préparation…";
+  else if (attenteToucher) texte = "Prêt : appuyez pour imprimer";
+  for (const b of document.querySelectorAll(".btn-imprimer")) {
+    b.querySelector("span").textContent = texte;
+    b.classList.toggle("occupe", occupe);
   }
+  for (const s of document.querySelectorAll(".statut-impression")) s.textContent = message;
+}
+
+function preparerPDF() {
+  const sig = signature();
+  if (pdfPret?.sig === sig) return Promise.resolve(pdfPret);
+  if (pdfEnCours?.sig === sig) return pdfEnCours.promesse;
+  const numero = ++compteurPreparation;
+  const promesse = genererPDF((i, n) => {
+    if (numero === compteurPreparation) {
+      progression = `Préparation… page ${i} sur ${n}`;
+      majBoutonsImpression();
+    }
+  })
+    .then((blob) => {
+      const resultat = { sig, file: new File([blob], nomPDF(), { type: "application/pdf" }) };
+      if (numero === compteurPreparation) pdfPret = resultat;
+      return resultat;
+    })
+    .finally(() => {
+      if (pdfEnCours?.promesse === promesse) pdfEnCours = null;
+      progression = "";
+      majBoutonsImpression();
+    });
+  pdfEnCours = { sig, promesse };
+  majBoutonsImpression();
+  return promesse;
+}
+
+// Impression depuis un ordinateur ou un téléphone sans feuille de partage : fenêtre d'impression du navigateur
+function imprimerFichier(file) {
+  const url = URL.createObjectURL(file);
+  const cadre = document.createElement("iframe");
+  cadre.style.cssText = "position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0";
+  cadre.src = url;
+  document.body.appendChild(cadre);
+  cadre.onload = () => {
+    try {
+      cadre.contentWindow.focus();
+      cadre.contentWindow.print();
+    } catch {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.name;
+      a.click();
+    }
+  };
+  setTimeout(() => {
+    cadre.remove();
+    URL.revokeObjectURL(url);
+  }, 120000);
+}
+
+async function partagerFichier(file) {
+  if (navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: "Planning et fiches" }); // contient « Imprimer » (AirPrint, en Wi-Fi)
+    } catch (err) {
+      if (err?.name === "AbortError") return;
+      if (err?.name === "NotAllowedError") {
+        attenteToucher = true; // le toucher est trop ancien : un nouveau toucher suffira
+        majBoutonsImpression();
+        return;
+      }
+      throw err;
+    }
+  } else imprimerFichier(file);
+}
+
+async function imprimer() {
+  if (pdfEnCours && !attenteToucher) {
+    // Toujours en préparation : on prévient, le bouton passera à « Prêt »
+    attenteToucher = true;
+    majBoutonsImpression("Un instant, le document se prépare…");
+    pdfEnCours.promesse.finally(() => majBoutonsImpression());
+    return;
+  }
+  try {
+    attenteToucher = false;
+    majBoutonsImpression();
+    const pret = pdfPret?.sig === signature() ? pdfPret : await preparerPDF();
+    await partagerFichier(pret.file);
+    majBoutonsImpression("");
+  } catch (err) {
+    majBoutonsImpression(`Impression impossible : ${err.message}`);
+  }
+}
+
+let tPrepa;
+function planifierPreparation() {
+  clearTimeout(tPrepa);
+  tPrepa = setTimeout(() => {
+    if (document.getElementById("vue-fiches").hidden) return;
+    preparerPDF().catch(() => {});
+  }, 700);
 }
 
 // ---------- Réglages ----------
@@ -580,7 +675,7 @@ function init() {
     ouvrirReglages,
   });
   for (const b of document.querySelectorAll(".onglets button")) b.addEventListener("click", () => montrerVue(b.dataset.vue));
-  $("btn-pdf").addEventListener("click", recupererFiches);
+  for (const b of document.querySelectorAll(".btn-imprimer")) b.addEventListener("click", imprimer);
   $("fiches-valider").addEventListener("click", () => {
     montrerVue("planning");
     planning.allerExtras();
