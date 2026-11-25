@@ -107,31 +107,35 @@ export function trouverGrille(canvas) {
     for (let y = y0; y < y1; y++) n += trait[y * w + x];
     pv[x] = n / (y1 - y0);
   }
-  g.lignesV = pics(glisser(pv, 5), 2.0, 8);
+  // On ignore les bords du scan : une bande sombre (table, ombre) n'est jamais une colonne du planning
+  g.lignesV = pics(glisser(pv, 5), 2.0, 8).filter((x) => x > w * 0.035 && x < w * 0.965);
   if (g.lignesV.length < 7) throw new Error("Tableau introuvable sur le scan. Refaites le scan avec toute la feuille bien visible et bien à plat.");
 
   // Jours : traits horizontaux de la colonne Date. L'en-tête est plus haut qu'une ligne de jour.
-  const L = lignesDansBande(g, g.lignesV[0], g.lignesV[1]);
+  const L = lignesDansBande(g, g.lignesV[0], g.lignesV[1]).filter((y) => y > h * 0.02 && y < h * 0.98);
   if (L.length < 10) throw new Error("Lignes du tableau introuvables. Refaites le scan avec toute la feuille bien visible.");
   const ecarts = L.slice(1).map((y, i) => y - L[i]);
   g.pas = mediane(ecarts);
-  // Les jours = la plus longue suite de traits régulièrement espacés (l'en-tête, plus haut, est exclu).
-  // Un écart double (trait effacé) compte pour deux lignes.
-  let debut = 0, best = [0, 0];
-  ecarts.forEach((e, i) => {
-    const k = Math.round(e / g.pas);
-    const regulier = k >= 1 && k <= 2 && Math.abs(e - k * g.pas) < g.pas * 0.25;
-    if (!regulier) {
-      debut = i + 1;
-      return;
-    }
-    if (i + 1 - debut > best[1] - best[0]) best = [debut, i + 1];
-  });
-  const bornes = [L[best[0]]];
-  for (let i = best[0]; i < best[1]; i++) {
-    const ecart = L[i + 1] - L[i];
-    const n = Math.max(1, Math.round(ecart / g.pas));
-    for (let k = 1; k <= n; k++) bornes.push(L[i] + (ecart * k) / n);
+  // Début des jours : juste sous l'en-tête. L'en-tête est la seule ligne où les colonnes « Vendeur »
+  // sont coupées par un trait imprimé (entre « Vendeur 1 » et le prénom).
+  const Lv = lignesDansBande(g, g.lignesV[2], g.lignesV[6] ?? g.lignesV[g.lignesV.length - 1]);
+  let i0 = -1;
+  for (let i = 0; i < Math.min(L.length - 1, 6) && i0 < 0; i++) {
+    const a = L[i], b = L[i + 1], m = (b - a) * 0.2;
+    if (Lv.some((y) => y > a + m && y < b - m)) i0 = i + 1;
+  }
+  if (i0 < 0) {
+    // Sinon : premier écart nettement plus haut qu'une ligne de jour
+    const k = ecarts.findIndex((e) => e > g.pas * 1.4);
+    i0 = k < 0 ? 0 : k + 1;
+  }
+  // Puis les traits suivants tant qu'ils restent régulièrement espacés (un écart double = trait effacé)
+  const bornes = [L[i0]];
+  for (let i = i0; i < L.length - 1; i++) {
+    const e = L[i + 1] - L[i];
+    const n = Math.round(e / g.pas);
+    if (n < 1 || n > 2 || Math.abs(e - n * g.pas) > g.pas * 0.3) break;
+    for (let k = 1; k <= n; k++) bornes.push(L[i] + (e * k) / n);
   }
   g.bornes = bornes;
   return g;

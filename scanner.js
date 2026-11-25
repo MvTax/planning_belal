@@ -110,11 +110,12 @@ export function detectQuad(data, w, h) {
   }
   if (!bestComp || bestComp.count < n * 0.12) return null;
   let q = [bestComp.tl, bestComp.tr, bestComp.br, bestComp.bl].map(([x, y]) => ({ x, y }));
-  // Compense l'érosion : on pousse chaque coin d'1,5 px vers l'extérieur
+  // Coins légèrement À L'INTÉRIEUR de la feuille : mieux vaut perdre 1 mm de marge blanche
+  // que garder une bande sombre du décor sur le bord du scan
   const cx = (q[0].x + q[1].x + q[2].x + q[3].x) / 4, cy = (q[0].y + q[1].y + q[2].y + q[3].y) / 4;
   q = q.map((p) => {
     const dx = p.x - cx, dy = p.y - cy, d = Math.hypot(dx, dy) || 1;
-    return { x: clamp(p.x + (dx / d) * 1.5, 0, w - 1), y: clamp(p.y + (dy / d) * 1.5, 0, h - 1) };
+    return { x: clamp(p.x - (dx / d) * 1.5, 0, w - 1), y: clamp(p.y - (dy / d) * 1.5, 0, h - 1) };
   });
   const area = quadArea(q);
   if (!isConvex(q) || area < n * 0.12 || area > n * 0.985) return null;
