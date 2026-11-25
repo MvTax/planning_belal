@@ -7,7 +7,7 @@ Adresse une fois GitHub Pages activé : **https://mvtax.github.io/planning_belal
 ## Utilisation
 
 1. Ouvrir le lien dans Safari, puis Partager → **Sur l'écran d'accueil** (ou ajouter en favori).
-2. La première fois : ⚙︎ Réglages → **Lecture du planning** → Google Gemini (par défaut) → coller la **clé API Gemini** (aistudio.google.com → Get API key). Claude reste possible en option (console.anthropic.com → API Keys). La clé reste sur le téléphone.
+2. ⚙︎ Réglages → **Lecture du planning** : **Sur le téléphone** (par défaut, gratuit, sans internet). Gemini ou Claude restent possibles en option, avec une clé API propre à chaque téléphone. Vérifier aussi la **colonne** de chaque salarié sur le planning (Vendeur 1 à 4).
 3. **Scanner le planning** : la caméra s'ouvre en mode scan, la feuille est entourée en vert et prise automatiquement quand elle est stable (ou bouton rond). Ajuster les coins si besoin → **Valider** → **Utiliser ce scan**. La lecture démarre toute seule.
 4. Vérifier l'aperçu (les jours mal lus sont surlignés en orange dans « Vérifier / corriger les horaires »).
 5. **Imprimer** → choisir l'imprimante (AirPrint) → Imprimer.
@@ -15,6 +15,7 @@ Adresse une fois GitHub Pages activé : **https://mvtax.github.io/planning_belal
 
 ## Ce que fait l'appli
 
+- Lecture sur le téléphone (`lecteur.js`) : retrouve les lignes du tableau sur le scan redressé, puis lit la couleur de l'encre dans la colonne de chaque salarié (rouge = Repos, bleu = OK). Les autres mentions (CP, École, prénom…) sont signalées en orange à vérifier. Aucun token, aucune donnée envoyée.
 - Mode scan (`scanner.js`) : détection de la feuille en direct, prise automatique, recadrage, redressement de la perspective et fond blanchi en gardant les couleurs de l'encre. « + Page » pour scanner plusieurs feuilles, « Importer une photo » pour partir d'une photo existante.
 - Lit le scan du planning mensuel avec **Gemini** (meilleur modèle « flash » stable disponible pour la clé, choisi automatiquement) ou **Claude** (`claude-opus-5-5`) : pour chaque vendeur et chaque jour, « OK », « Repos », « CP », « École », remplacement…
 - « OK » → la fiche reprend les **horaires habituels** du salarié pour ce jour de la semaine (Réglages → Salariés → Horaires habituels). Belal : 10h–15h / 16h–20h30 du lundi au samedi, 11h–15h / 16h–19h le dimanche.

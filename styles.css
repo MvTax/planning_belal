@@ -245,3 +245,7 @@ html.scan-open, html.scan-open body { overflow: hidden; }
 }
 .scan-flash { position: absolute; inset: 0; background: #fff; opacity: .8; pointer-events: none; animation: scanflash .25s ease-out forwards; }
 @keyframes scanflash { to { opacity: 0; } }
+
+.mois { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 15px; font-weight: 600; margin: 4px 0 4px; }
+.emp-col { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; color: var(--muted); padding: 4px 0 0 28px; }
+.emp-col select { min-height: 36px; padding: 4px 8px; font-size: 15px; }

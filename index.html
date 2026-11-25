@@ -10,8 +10,8 @@
   <link rel="icon" type="image/png" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <meta name="apple-mobile-web-app-title" content="Fiches">
-  <link rel="stylesheet" href="styles.css?v=7">
-  <script type="module" src="app.js?v=7"></script>
+  <link rel="stylesheet" href="styles.css?v=8">
+  <script type="module" src="app.js?v=8"></script>
 </head>
 <body>
   <header class="topbar no-print">
@@ -25,6 +25,7 @@
     <section class="card" id="step-photo">
       <h2>1. Photo du planning</h2>
       <p class="hint">Scannez le planning global : la feuille est détectée, recadrée et redressée automatiquement.</p>
+      <label class="mois">Mois du planning <input type="month" id="mois"></label>
       <button id="btn-scan" class="big-btn primary" type="button">Scanner le planning</button>
       <button id="btn-simulation" class="big-btn" type="button">Simulation scan (planning de novembre)</button>
       <div id="thumbs" class="thumbs"></div>
@@ -59,9 +60,13 @@
 
       <fieldset>
         <legend>Lecture du planning</legend>
-        <label class="check"><input type="radio" name="provider" value="gemini"> Google Gemini</label>
+        <label class="check"><input type="radio" name="provider" value="local"> Sur le téléphone (gratuit, sans internet)</label>
+        <div data-for="local">
+          <p class="small">Lit la couleur de l'encre dans la colonne de chaque salarié : rouge = Repos, bleu = OK. Les autres mentions (CP, École, prénom…) sont signalées en orange pour vérification.</p>
+        </div>
+        <label class="check"><input type="radio" name="provider" value="gemini"> Google Gemini (lit tout le texte)</label>
         <label class="check"><input type="radio" name="provider" value="claude"> Claude (Anthropic)</label>
-        <div data-for="gemini">
+        <div data-for="gemini" hidden>
           <p class="small">Clé Gemini : aistudio.google.com → Get API key. Elle reste uniquement sur ce téléphone.</p>
           <input type="password" id="s-geminikey" autocomplete="off" placeholder="AIza…" spellcheck="false">
         </div>
@@ -84,7 +89,7 @@
         <button type="button" id="s-clear" class="link-btn danger">Effacer tous les horaires enregistrés</button>
       </fieldset>
 
-      <p class="small version">Version 7</p>
+      <p class="small version">Version 8</p>
       <div class="dialog-actions">
         <button value="cancel" type="submit" class="big-btn">Annuler</button>
         <button value="save" type="submit" class="big-btn primary" id="s-save">Enregistrer</button>

@@ -51,7 +51,8 @@ const store = {
 
 const state = {
   settings: store.get("fp.settings", structuredClone(DEFAULT_SETTINGS)),
-  provider: store.get("fp.provider", "gemini"), // "gemini" ou "claude"
+  provider: store.get("fp.lecture", "local"), // "local" (sur le téléphone), "gemini" ou "claude"
+  mois: store.get("fp.mois", `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`), // "YYYY-MM" du planning
   geminiKey: store.get("fp.geminikey", ""),
   apiKey: store.get("fp.apikey", ""), // clé Claude
   planning: store.get("fp.planning", {}), // { nom: { "YYYY-MM-DD": entrée } }
@@ -61,11 +62,15 @@ const state = {
 };
 // Réglages enregistrés par une version précédente : on ajoute les horaires habituels
 delete state.settings.pause;
-for (const e of state.settings.employes) e.horaires ||= structuredClone(HORAIRES_DEFAUT);
+for (const e of state.settings.employes) {
+  e.horaires ||= structuredClone(HORAIRES_DEFAUT);
+  if (e.colonne === undefined) e.colonne = e.nom === "Belal N'DAO" ? 1 : 0; // colonne « Vendeur N » sur le planning
+}
 
 function save() {
   store.set("fp.settings", state.settings);
-  store.set("fp.provider", state.provider);
+  store.set("fp.lecture", state.provider);
+  store.set("fp.mois", state.mois);
   store.set("fp.geminikey", state.geminiKey);
   store.set("fp.apikey", state.apiKey);
   store.set("fp.planning", state.planning);
@@ -317,15 +322,48 @@ function analyserJSON(text) {
 }
 
 async function lirePlanning(files) {
+  if (state.provider === "local") return lireSurLeTelephone(files[0]);
   const images = await Promise.all(files.map(preparerImage));
   return state.provider === "claude" ? lireAvecClaude(images) : lireAvecGemini(images);
 }
 
+// ----- Lecture sur le téléphone (gratuite, sans internet) -----
+function datesDuMois(mois) {
+  const [y, m] = mois.split("-").map(Number);
+  const n = new Date(y, m, 0).getDate();
+  return Array.from({ length: n }, (_, i) => `${y}-${pad(m)}-${pad(i + 1)}`);
+}
+
+async function lireSurLeTelephone(file) {
+  const { lireSurTelephone } = await import("./lecteur.js?v=8");
+  const colonnes = state.settings.employes
+    .filter((e) => e.colonne >= 1 && e.colonne <= 4)
+    .map((e) => ({ nom: e.nom, colonne: Number(e.colonne) }));
+  if (!colonnes.length) throw new Error("Indiquez la colonne de chaque salarié sur le planning (⚙︎ Réglages → Salariés).");
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    canvas.getContext("2d").drawImage(img, 0, 0);
+    state.dernierModele = "";
+    const lu = lireSurTelephone(canvas, colonnes, datesDuMois(state.mois));
+    const aVerifier = lu.vendeurs.some((v) => v.cases.some((c) => c.endsWith("?") || c === ""));
+    if (aVerifier && !lu.remarques) lu.remarques = "Les jours en orange (écriture autre que OK / Repos, ou case vide) sont à vérifier dans « Vérifier / corriger ».";
+    return convertirLecture(lu);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 // ----- Google Gemini -----
-// Choisit le meilleur modèle « flash » stable disponible pour cette clé (mis en cache une semaine).
-async function choisirModeleGemini(ai) {
-  const cache = store.get("fp.gemini.model", null);
-  if (cache?.name && Date.now() - cache.t < 7 * 864e5) return cache.name;
+// Les meilleurs modèles « flash » stables disponibles pour cette clé (liste mise en cache une semaine).
+async function choisirModelesGemini(ai) {
+  const cache = store.get("fp.gemini.models", null);
+  if (cache?.noms?.length && Date.now() - cache.t < 7 * 864e5) return cache.noms;
   const noms = [];
   const pager = await ai.models.list({ config: { pageSize: 100 } });
   for await (const m of pager) {
@@ -338,13 +376,13 @@ async function choisirModeleGemini(ai) {
   const version = (n) => parseFloat(n.match(/^gemini-(\d+(?:\.\d+)?)/)?.[1] || "0");
   const score = (n) => version(n) * 10 + (n.includes("flash") ? 3 : 0) + (n.includes("preview") ? -5 : 0);
   noms.sort((x, y) => score(y) - score(x));
-  const name = noms[0] || GEMINI_DEFAUT;
-  store.set("fp.gemini.model", { name, t: Date.now() });
-  return name;
+  const choix = noms.length ? noms.slice(0, 3) : [GEMINI_DEFAUT];
+  store.set("fp.gemini.models", { noms: choix, t: Date.now() });
+  return choix;
 }
 
 async function lireAvecGemini(images) {
-  const { GoogleGenAI, ApiError } = await import("./vendor/gemini.js?v=7");
+  const { GoogleGenAI, ApiError } = await import("./vendor/gemini.js?v=8");
   // Pas de longues relances silencieuses : 1 nouvel essai maximum, et une limite de temps
   const ai = new GoogleGenAI({
     apiKey: state.geminiKey,
@@ -375,27 +413,31 @@ async function lireAvecGemini(images) {
     return new Error(`Erreur Gemini (${err?.status ?? "?"}) : ${msg.slice(0, 200)}`);
   };
 
-  let model;
+  let modeles;
   try {
-    model = await choisirModeleGemini(ai);
+    modeles = await choisirModelesGemini(ai);
   } catch (err) {
     if (err instanceof ApiError && err.status !== 404) throw erreur(err);
-    model = GEMINI_DEFAUT;
+    modeles = [GEMINI_DEFAUT];
   }
 
-  let response, derniere;
-  for (const config of essais) {
-    try {
-      response = await ai.models.generateContent({ model, contents, config });
-      break;
-    } catch (err) {
-      derniere = err;
-      if (err instanceof ApiError && err.status === 404) {
-        store.set("fp.gemini.model", null); // modèle retiré : on en choisira un autre la prochaine fois
-        throw new Error("Modèle Gemini indisponible. Réessayez.");
+  // Modèle surchargé ou quota atteint → on passe au modèle suivant (chaque modèle a son propre quota)
+  let response, derniere, model;
+  modeles: for (model of modeles) {
+    for (const config of essais) {
+      try {
+        response = await ai.models.generateContent({ model, contents, config });
+        break modeles;
+      } catch (err) {
+        derniere = err;
+        const statut = err instanceof ApiError ? err.status : 0;
+        if ([404, 429, 500, 503].includes(statut) || /abort|timeout/i.test(`${err?.name} ${err?.message}`)) {
+          if (statut === 404) store.set("fp.gemini.models", null);
+          continue modeles;
+        }
+        const optionRefusee = statut === 400 && !/api key/i.test(String(err.message));
+        if (!optionRefusee) throw erreur(err);
       }
-      const optionRefusee = err instanceof ApiError && err.status === 400 && !/api key/i.test(String(err.message));
-      if (!optionRefusee) throw erreur(err);
     }
   }
   if (!response) throw erreur(derniere);
@@ -410,7 +452,7 @@ async function lireAvecGemini(images) {
 
 // ----- Claude (Anthropic) -----
 async function lireAvecClaude(images) {
-  const { Anthropic } = await import("./vendor/anthropic.js?v=7");
+  const { Anthropic } = await import("./vendor/anthropic.js?v=8");
   const client = new Anthropic({ apiKey: state.apiKey, dangerouslyAllowBrowser: true, maxRetries: 1, timeout: DELAI_MAX_MS });
 
   let response;
@@ -459,6 +501,7 @@ function integrerResultat(result) {
         boutique: state.settings.employes[0]?.boutique || "",
         actif: false,
         horaires: structuredClone(state.settings.employes[0]?.horaires || HORAIRES_DEFAUT),
+        colonne: 0,
       };
       if (!emp.nom) continue;
       state.settings.employes.push(emp);
@@ -674,7 +717,7 @@ function onEditionHoraire(ev) {
 
 // ---------- Impression / PDF ----------
 async function genererPDF() {
-  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=7");
+  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=8");
   const sheets = [...document.querySelectorAll("#sheets .sheet")];
   // Rendu hors écran à taille réelle (sans la réduction de l'aperçu)
   const stage = document.createElement("div");
@@ -751,6 +794,11 @@ function rendreReglages() {
           <input type="text" class="emp-boutique" value="${esc(e.boutique)}" placeholder="Boutique" aria-label="Boutique">
           <button type="button" class="del" aria-label="Supprimer">×</button>
         </div>
+        <label class="emp-col">Colonne sur le planning
+          <select class="emp-colonne">
+            ${[0, 1, 2, 3, 4].map((c) => `<option value="${c}"${Number(e.colonne) === c ? " selected" : ""}>${c ? `Vendeur ${c}` : "Aucune (extra)"}</option>`).join("")}
+          </select>
+        </label>
         <details class="emp-h">
           <summary>Horaires habituels</summary>
           <div class="h-grid">
@@ -769,10 +817,10 @@ function rendreReglages() {
     .join("");
 }
 
-const cleActive = () => (state.provider === "claude" ? state.apiKey : state.geminiKey);
+const cleActive = () => (state.provider === "local" ? "aucune" : state.provider === "claude" ? state.apiKey : state.geminiKey);
 
 function afficherChampCle() {
-  const p = document.querySelector('input[name="provider"]:checked')?.value || "gemini";
+  const p = document.querySelector('input[name="provider"]:checked')?.value || "local";
   for (const el of document.querySelectorAll("[data-for]")) el.hidden = el.dataset.for !== p;
 }
 
@@ -792,6 +840,7 @@ function lireReglages() {
       boutique: r.querySelector(".emp-boutique").value.trim(),
       actif: r.querySelector(".emp-actif").checked,
       horaires: lireHoraires(r),
+      colonne: Number(r.querySelector(".emp-colonne").value),
     }))
     .filter((e) => e.nom);
   // Un salarié renommé garde ses horaires
@@ -805,14 +854,14 @@ function lireReglages() {
   state.settings.employes = employes;
   state.apiKey = document.getElementById("s-apikey").value.trim();
   state.geminiKey = document.getElementById("s-geminikey").value.trim();
-  state.provider = document.querySelector('input[name="provider"]:checked')?.value || "gemini";
+  state.provider = document.querySelector('input[name="provider"]:checked')?.value || "local";
 }
 
 // Exemple : la colonne de Belal sur le planning de novembre 2026, telle que la lecture doit la renvoyer.
 function chargerExemple() {
   const nom = "Belal N'DAO";
   if (!state.settings.employes.some((e) => e.nom === nom)) {
-    state.settings.employes.unshift({ nom, boutique: "NOA", actif: true, horaires: structuredClone(HORAIRES_DEFAUT) });
+    state.settings.employes.unshift({ nom, boutique: "NOA", actif: true, horaires: structuredClone(HORAIRES_DEFAUT), colonne: 1 });
   }
   const repos = new Set([5, 8, 11, 12, 18, 19, 26]);
   const jours = Array.from({ length: 30 }, (_, i) => {
@@ -874,7 +923,7 @@ async function lancerLecture() {
     integrerResultat(result);
     state.photos = [];
     rendreMiniatures();
-    setStatus(`Fiches remplies en ${Math.round((Date.now() - debut) / 1000)} s (lu avec ${state.dernierModele}). Vérifiez l'aperçu puis imprimez.`);
+    setStatus(`Fiches remplies en ${Math.round((Date.now() - debut) / 1000)} s (${state.dernierModele ? `lu avec ${state.dernierModele}` : "lu sur le téléphone, sans internet"}). Vérifiez l'aperçu puis imprimez.`);
     afficherResultat();
     $("step-result").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (err) {
@@ -891,7 +940,7 @@ function init() {
 
   // Scan réel (caméra) ou simulation avec la photo du planning de novembre 2026
   const scanner = async (options) => {
-    const { openScanner } = await import("./scanner.js?v=7");
+    const { openScanner } = await import("./scanner.js?v=8");
     const { pages, finished } = await openScanner(options);
     if (!pages.length) return;
     state.photos.push(...pages);
@@ -899,8 +948,19 @@ function init() {
     setStatus("");
     if (finished) lancerLecture(); // scan validé : on lit le planning tout de suite
   };
+  $("mois").value = state.mois;
+  $("mois").addEventListener("change", () => {
+    if (/^\d{4}-\d{2}$/.test($("mois").value)) {
+      state.mois = $("mois").value;
+      save();
+    }
+  });
   $("btn-scan").addEventListener("click", () => scanner());
-  $("btn-simulation").addEventListener("click", () => scanner({ image: "test/planning-novembre-2026.jpg?v=7" }));
+  $("btn-simulation").addEventListener("click", () => {
+    state.mois = $("mois").value = "2026-11"; // la photo de test est le planning de novembre 2026
+    save();
+    scanner({ image: "test/planning-novembre-2026.jpg?v=8" });
+  });
   $("thumbs").addEventListener("click", (ev) => {
     const i = ev.target.dataset?.i;
     if (i == null) return;
@@ -949,6 +1009,7 @@ function init() {
       boutique: state.settings.employes[0]?.boutique || "",
       actif: true,
       horaires: structuredClone(state.settings.employes[0]?.horaires || HORAIRES_DEFAUT),
+      colonne: 0,
     });
     rendreReglages();
     const inputs = document.querySelectorAll("#s-employes .emp-nom");
