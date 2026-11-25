@@ -6,14 +6,20 @@ Adresse une fois GitHub Pages activé : **https://mvtax.github.io/planning_belal
 
 ## Utilisation
 
-1. Ouvrir le lien dans Safari, puis Partager → **Sur l'écran d'accueil** (ou ajouter en favori).
-2. ⚙︎ Réglages → **Lecture du planning** : **Sur le téléphone** (par défaut, gratuit, sans internet). Gemini ou Claude restent possibles en option, avec une clé API propre à chaque téléphone. Vérifier aussi la **colonne** de chaque salarié sur le planning (Vendeur 1 à 4).
-3. **Scanner le planning** : la caméra s'ouvre en mode scan, la feuille est entourée en vert et prise automatiquement quand elle est stable (ou bouton rond). Ajuster les coins si besoin → **Valider** → **Utiliser ce scan**. La lecture démarre toute seule.
-4. Vérifier l'aperçu (les jours mal lus sont surlignés en orange dans « Vérifier / corriger les horaires »).
-5. **Imprimer** → choisir l'imprimante (AirPrint) → Imprimer.
-   Depuis l'icône de l'écran d'accueil, le bouton ouvre le PDF dans la feuille de partage : choisir « Imprimer ».
+1. Ouvrir le lien dans Safari, puis Partager → **Sur l'écran d'accueil**.
+2. Onglet **Planning** : le mois s'affiche en entier, une ligne par jour, une colonne par vendeur et une colonne « Renforts ».
+   - **Changer une case** : appuyer sur la case, une roue de 6 choix s'ouvre autour du doigt (OK, Repos, Congé, École, Malade, Absent). Glisser sur le bon choix et relâcher. Un simple toucher ouvre aussi la roue.
+   - **Renforts** : toucher la case de droite, cocher les prénoms, « Terminé ».
+   - Chaque changement peut être annulé avec « Annuler » dans le bandeau du bas.
+   - Un nouveau mois est préparé tout seul : tout le monde « OK », sauf les repos habituels (réglables pour chaque salarié).
+3. **Préparer les fiches du mois** : les fiches de présence de tous les vendeurs sont remplies (horaires habituels, repos, congés, école, fériés), puis **Imprimer**.
+4. Planning encore sur papier : onglet **Fiches** → **Scanner le planning**.
+
+Réglages (⚙︎) : taille du texte, salariés (colonne, horaires habituels, repos habituels), lecture des scans.
 
 ## Ce que fait l'appli
+
+- Planning du mois (`planning.js`) : toute la largeur de l'écran, défilement vertical seulement, gros caractères, choix par appui + glisser. Novembre 2026 s'ouvre avec le planning papier recopié.
 
 - Lecture sur le téléphone (`lecteur.js`) : retrouve les lignes du tableau sur le scan redressé, puis lit la couleur de l'encre dans la colonne de chaque salarié (rouge = Repos, bleu = OK). Les autres mentions (CP, École, prénom…) sont signalées en orange à vérifier. Aucun token, aucune donnée envoyée.
 - Mode scan (`scanner.js`) : détection de la feuille en direct, prise automatique, recadrage, redressement de la perspective et fond blanchi en gardant les couleurs de l'encre. « + Page » pour scanner plusieurs feuilles, « Importer une photo » pour partir d'une photo existante.

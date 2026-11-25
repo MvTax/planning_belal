@@ -1,5 +1,6 @@
-// Fiches de présence — photo du planning → fiches hebdomadaires remplies → impression.
+// Planning boutique — planning du mois en quelques gestes → fiches de présence remplies → impression.
 // Tout tourne dans le navigateur ; les données restent sur le téléphone (localStorage).
+import { initPlanning, joursDuMois } from "./planning.js?v=11";
 
 const MODEL = "claude-opus-5-5";
 const DELAI_MAX_MS = 75000; // au-delà, on arrête et on affiche un message
@@ -26,8 +27,16 @@ const HORAIRES_DEFAUT = [
   H("11:00", "15:00", "16:00", "19:00"),
 ];
 
+const VENDEURS_DEFAUT = [
+  { nom: "Belal N'DAO", colonne: 1 },
+  { nom: "Soso", colonne: 2 },
+  { nom: "Maeva", colonne: 3 },
+  { nom: "Nour", colonne: 4 },
+];
 const DEFAULT_SETTINGS = {
-  employes: [{ nom: "Belal N'DAO", boutique: "NOA", actif: true, horaires: HORAIRES_DEFAUT }],
+  employes: VENDEURS_DEFAUT.map((v) => ({ ...v, boutique: "NOA", actif: true, horaires: HORAIRES_DEFAUT, repos: [] })),
+  extras: ["Sérine", "Lisa", "Sarra", "Katy", "Shaily"],
+  taille: "grand",
 };
 
 // ---------- Stockage local (protégé : peut échouer en navigation privée) ----------
@@ -65,7 +74,21 @@ delete state.settings.pause;
 for (const e of state.settings.employes) {
   e.horaires ||= structuredClone(HORAIRES_DEFAUT);
   if (e.colonne === undefined) e.colonne = e.nom === "Belal N'DAO" ? 1 : 0; // colonne « Vendeur N » sur le planning
+  e.repos ||= []; // jours de repos habituels (0 = lundi) pour préparer chaque nouveau mois
 }
+// Les 4 vendeurs du planning papier, s'il en manque
+for (const v of VENDEURS_DEFAUT) {
+  if (!state.settings.employes.some((e) => Number(e.colonne) === v.colonne)) {
+    state.settings.employes.push({ ...v, boutique: state.settings.employes[0]?.boutique || "NOA", actif: true, horaires: structuredClone(HORAIRES_DEFAUT), repos: [] });
+  }
+}
+state.settings.extras ||= structuredClone(DEFAULT_SETTINGS.extras);
+state.settings.taille ||= "grand";
+const appliquerTaille = () => {
+  document.documentElement.classList.remove("t-normal", "t-grand", "t-tres");
+  document.documentElement.classList.add(`t-${state.settings.taille}`);
+};
+appliquerTaille();
 
 function save() {
   store.set("fp.settings", state.settings);
@@ -342,7 +365,7 @@ function datesDuMois(mois) {
 }
 
 async function lireSurLeTelephone(file) {
-  const { lireSurTelephone } = await import("./lecteur.js?v=10");
+  const { lireSurTelephone } = await import("./lecteur.js?v=11");
   const colonnes = state.settings.employes
     .filter((e) => e.colonne >= 1 && e.colonne <= 4)
     .map((e) => ({ nom: e.nom, colonne: Number(e.colonne) }));
@@ -396,7 +419,7 @@ async function choisirModelesGemini(ai) {
 }
 
 async function lireAvecGemini(images) {
-  const { GoogleGenAI, ApiError } = await import("./vendor/gemini.js?v=10");
+  const { GoogleGenAI, ApiError } = await import("./vendor/gemini.js?v=11");
   // Pas de longues relances silencieuses : 1 nouvel essai maximum, et une limite de temps
   const ai = new GoogleGenAI({
     apiKey: state.geminiKey,
@@ -466,7 +489,7 @@ async function lireAvecGemini(images) {
 
 // ----- Claude (Anthropic) -----
 async function lireAvecClaude(images) {
-  const { Anthropic } = await import("./vendor/anthropic.js?v=10");
+  const { Anthropic } = await import("./vendor/anthropic.js?v=11");
   const client = new Anthropic({ apiKey: state.apiKey, dangerouslyAllowBrowser: true, maxRetries: 1, timeout: DELAI_MAX_MS });
 
   let response;
@@ -731,7 +754,7 @@ function onEditionHoraire(ev) {
 
 // ---------- Impression / PDF ----------
 async function genererPDF() {
-  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=10");
+  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=11");
   const sheets = [...document.querySelectorAll("#sheets .sheet")];
   // Rendu hors écran à taille réelle (sans la réduction de l'aperçu)
   const stage = document.createElement("div");
@@ -794,6 +817,7 @@ function imprimer() {
 // ---------- Réglages ----------
 function rendreReglages() {
   document.getElementById("s-apikey").value = state.apiKey;
+  for (const r of document.querySelectorAll('input[name="taille"]')) r.checked = r.value === state.settings.taille;
   document.getElementById("s-geminikey").value = state.geminiKey;
   for (const r of document.querySelectorAll('input[name="provider"]')) r.checked = r.value === state.provider;
   afficherChampCle();
@@ -807,6 +831,11 @@ function rendreReglages() {
           <input type="text" class="emp-nom" value="${esc(e.nom)}" placeholder="Nom" aria-label="Nom">
           <input type="text" class="emp-boutique" value="${esc(e.boutique)}" placeholder="Boutique" aria-label="Boutique">
           <button type="button" class="del" aria-label="Supprimer">×</button>
+        </div>
+        <div class="emp-repos">Repos habituels
+          <span class="jours">${["L", "M", "M", "J", "V", "S", "D"]
+            .map((j, k) => `<label><input type="checkbox" class="emp-rj" value="${k}"${(e.repos || []).includes(k) ? " checked" : ""}><span>${j}</span></label>`)
+            .join("")}</span>
         </div>
         <label class="emp-col">Colonne sur le planning
           <select class="emp-colonne">
@@ -855,6 +884,7 @@ function lireReglages() {
       actif: r.querySelector(".emp-actif").checked,
       horaires: lireHoraires(r),
       colonne: Number(r.querySelector(".emp-colonne").value),
+      repos: [...r.querySelectorAll(".emp-rj:checked")].map((i) => Number(i.value)),
     }))
     .filter((e) => e.nom);
   // Un salarié renommé garde ses horaires
@@ -866,6 +896,7 @@ function lireReglages() {
     delete e.ancien;
   }
   state.settings.employes = employes;
+  state.settings.taille = document.querySelector('input[name="taille"]:checked')?.value || "grand";
   state.apiKey = document.getElementById("s-apikey").value.trim();
   state.geminiKey = document.getElementById("s-geminikey").value.trim();
   state.provider = document.querySelector('input[name="provider"]:checked')?.value || "local";
@@ -895,6 +926,7 @@ function setStatus(msg, kind = "") {
 function afficherResultat() {
   const has = !!state.periode;
   document.getElementById("step-result").hidden = !has;
+  document.getElementById("vide-fiches").hidden = has;
   if (has) {
     document.getElementById("p-debut").value = state.periode.debut;
     document.getElementById("p-fin").value = state.periode.fin;
@@ -948,13 +980,86 @@ async function lancerLecture() {
   }
 }
 
+// ---------- Planning → fiches ----------
+let planning = null;
+const CODE_PLANNING = { travail: "OK", repos: "Repos", conge: "CP", ecole: "École", maladie: "Maladie", absent: "Absent" };
+
+function vendeursDuPlanning() {
+  return state.settings.employes
+    .filter((e) => e.colonne >= 1 && e.colonne <= 4)
+    .sort((a, b) => a.colonne - b.colonne)
+    .map((e) => ({ nom: e.nom, colonne: Number(e.colonne), repos: e.repos || [] }));
+}
+
+function fichesDepuisPlanning(mois, donnees) {
+  const dates = joursDuMois(mois).map(toISO);
+  const lu = {
+    dates,
+    vendeurs: vendeursDuPlanning().map((v) => ({
+      nom: v.nom,
+      cases: dates.map((d) => CODE_PLANNING[(donnees.jours[d] || {})[v.colonne]] || ""),
+    })),
+    extras: dates.map((d) => ({ date: d, noms: (donnees.jours[d] || {}).extras || [] })).filter((x) => x.noms.length),
+    remarques: "",
+  };
+  integrerResultat(convertirLecture(lu));
+  // Case laissée vide sur le planning : ligne vide sur la fiche (sauf si la personne est en renfort ce jour-là)
+  for (const v of vendeursDuPlanning()) {
+    for (const d of dates) {
+      const j = donnees.jours[d] || {};
+      if (j[v.colonne]) continue;
+      const emp = state.settings.employes.find((e) => e.nom === v.nom);
+      const enRenfort = (j.extras || []).some((n) => trouverSalarie(n) === emp);
+      if (enRenfort) state.planning[v.nom][d] = { statut: "travail", ...heuresDuJour(emp, d), texte: "Extra", incertain: false };
+      else delete state.planning[v.nom]?.[d];
+    }
+  }
+  save();
+  state.mois = mois;
+  state.remarques = "";
+  save();
+  afficherResultat();
+  montrerVue("fiches");
+  const n = salariesAImprimer().length;
+  setStatus("");
+  planning?.toast(`Fiches prêtes pour ${n} salarié${n > 1 ? "s" : ""}. Appuyez sur « Imprimer ».`);
+}
+
+function montrerVue(vue) {
+  const fiches = vue === "fiches";
+  document.getElementById("vue-planning").hidden = fiches;
+  document.getElementById("vue-fiches").hidden = !fiches;
+  document.body.classList.toggle("en-planning", !fiches);
+  for (const b of document.querySelectorAll(".onglets button")) b.classList.toggle("actif", b.dataset.vue === vue);
+  window.scrollTo({ top: 0 });
+  if (fiches) requestAnimationFrame(ajusterApercu); // l'aperçu se mesure une fois visible
+}
+
 function init() {
   const $ = (id) => document.getElementById(id);
   const dlg = $("settings");
 
+  const ouvrirReglages = () => {
+    rendreReglages();
+    dlg.returnValue = "";
+    dlg.showModal();
+  };
+  planning = initPlanning({
+    vendeurs: vendeursDuPlanning,
+    extrasConnus: () => state.settings.extras,
+    ajouterExtra: (nom) => {
+      if (!state.settings.extras.includes(nom)) state.settings.extras.push(nom);
+      save();
+    },
+    estFerie,
+    onFiches: fichesDepuisPlanning,
+    ouvrirReglages,
+  });
+  for (const b of document.querySelectorAll(".onglets button")) b.addEventListener("click", () => montrerVue(b.dataset.vue));
+
   // Scan réel (caméra) ou simulation avec la photo du planning de novembre 2026
   const scanner = async (options) => {
-    const { openScanner } = await import("./scanner.js?v=10");
+    const { openScanner } = await import("./scanner.js?v=11");
     const { pages, finished } = await openScanner(options);
     if (!pages.length) return;
     state.photos.push(...pages);
@@ -973,7 +1078,7 @@ function init() {
   $("btn-simulation").addEventListener("click", () => {
     state.mois = $("mois").value = "2026-11"; // la photo de test est le planning de novembre 2026
     save();
-    scanner({ image: "test/planning-novembre-2026.jpg?v=10" });
+    scanner({ image: "test/planning-novembre-2026.jpg?v=11" });
   });
   $("thumbs").addEventListener("click", (ev) => {
     const i = ev.target.dataset?.i;
@@ -1057,6 +1162,8 @@ function init() {
     if (dlg.returnValue !== "save") return;
     lireReglages();
     save();
+    appliquerTaille();
+    planning?.rafraichir();
     afficherResultat();
     if (cleActive() && state.photos.length) lancerLecture(); // clé ajoutée juste après un scan
   });

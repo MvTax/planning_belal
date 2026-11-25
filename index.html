@@ -3,17 +3,35 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Fiches de présence</title>
-  <meta name="description" content="Photo du planning → fiches de présence hebdomadaires remplies, prêtes à imprimer.">
+  <title>Planning boutique</title>
+  <meta name="description" content="Planning du mois en quelques gestes, fiches de présence remplies et imprimées en un bouton.">
   <meta name="theme-color" content="#1d3b8f">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
-  <meta name="apple-mobile-web-app-title" content="Fiches">
-  <link rel="stylesheet" href="styles.css?v=10">
-  <script type="module" src="app.js?v=10"></script>
+  <meta name="apple-mobile-web-app-title" content="Planning">
+  <link rel="stylesheet" href="styles.css?v=11">
+  <script type="module" src="app.js?v=11"></script>
 </head>
-<body>
+<body class="en-planning">
+  <section id="vue-planning" class="no-print" aria-label="Planning du mois">
+    <div class="pl-tete">
+      <div class="pl-barre">
+        <button id="pl-prec" class="pl-btn" type="button" aria-label="Mois précédent">‹</button>
+        <h1 id="pl-titre"></h1>
+        <button id="pl-suiv" class="pl-btn" type="button" aria-label="Mois suivant">›</button>
+        <button id="pl-reglages" class="pl-btn pl-engrenage" type="button" aria-label="Réglages"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg></button>
+      </div>
+      <div id="pl-cols" class="pl-cols"></div>
+    </div>
+    <div id="pl-grille" class="pl-grille"></div>
+    <div class="pl-pied">
+      <button id="pl-fiches" class="big-btn primary pl-gros" type="button">Préparer les fiches du mois</button>
+      <p class="pl-astuce">Appuyez sur une case, glissez sur le bon choix, relâchez.</p>
+    </div>
+  </section>
+
+  <div id="vue-fiches" hidden>
   <header class="topbar no-print">
     <h1>Fiches de présence</h1>
     <button id="btn-settings" class="icon-btn" type="button" aria-label="Réglages">
@@ -22,25 +40,12 @@
   </header>
 
   <main class="no-print">
-    <section class="card" id="step-photo">
-      <h2>1. Photo du planning</h2>
-      <p class="hint">Scannez le planning global : la feuille est détectée, recadrée et redressée automatiquement.</p>
-      <label class="mois">Mois du planning <input type="month" id="mois"></label>
-      <button id="btn-scan" class="big-btn primary" type="button">Scanner le planning</button>
-      <button id="btn-simulation" class="big-btn" type="button">Simulation scan (planning de novembre)</button>
-      <div id="thumbs" class="thumbs"></div>
-      <button id="btn-analyser" class="big-btn" type="button" hidden>Lire le planning et remplir les fiches</button>
-      <p id="status" class="status" role="status" aria-live="polite"></p>
-      <details id="controle" class="controle" hidden>
-        <summary>Voir ce que le téléphone a lu</summary>
-        <p class="small">Traits verts : colonnes trouvées. Traits bleus : lignes des jours. Étiquettes : ce qui a été lu dans chaque case.</p>
-        <img alt="Image de contrôle de la lecture">
-      </details>
-      <p class="small"><a href="#" id="link-manuel">Ou remplir à la main, sans photo</a></p>
+    <section class="card" id="vide-fiches">
+      <h2>Aucune fiche pour l'instant</h2>
+      <p class="hint">Remplissez le planning, puis appuyez sur « Préparer les fiches du mois ».</p>
     </section>
-
     <section class="card" id="step-result" hidden>
-      <h2>2. Fiches prêtes</h2>
+      <h2>Fiches prêtes</h2>
       <div class="actions">
         <button id="btn-print" class="big-btn primary" type="button">Imprimer</button>
         <button id="btn-pdf" class="big-btn" type="button">Enregistrer / partager en PDF</button>
@@ -55,16 +60,54 @@
         <div id="review-body"></div>
       </details>
     </section>
+    <section class="card" id="step-photo">
+      <h2>Planning sur papier ?</h2>
+      <p class="hint">Scannez la feuille : elle est recadrée, redressée et lue automatiquement.</p>
+      <label class="mois">Mois du planning <input type="month" id="mois"></label>
+      <button id="btn-scan" class="big-btn primary" type="button">Scanner le planning</button>
+      <button id="btn-simulation" class="big-btn" type="button">Simulation scan (planning de novembre)</button>
+      <div id="thumbs" class="thumbs"></div>
+      <button id="btn-analyser" class="big-btn" type="button" hidden>Lire le planning et remplir les fiches</button>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+      <details id="controle" class="controle" hidden>
+        <summary>Voir ce que le téléphone a lu</summary>
+        <p class="small">Traits verts : colonnes trouvées. Traits bleus : lignes des jours. Étiquettes : ce qui a été lu dans chaque case.</p>
+        <img alt="Image de contrôle de la lecture">
+      </details>
+      <p class="small"><a href="#" id="link-manuel">Ou remplir à la main, sans photo</a></p>
+    </section>
+
   </main>
 
   <div id="sheets" aria-label="Aperçu des fiches"></div>
+  </div>
+
+  <nav class="onglets no-print" aria-label="Navigation">
+    <button type="button" data-vue="planning" class="actif">
+      <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M7 2v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2zM5 9h14v11H5zm2 2v2h2v-2zm4 0v2h2v-2zm4 0v2h2v-2zm-8 4v2h2v-2zm4 0v2h2v-2z"/></svg>
+      <span>Planning</span>
+    </button>
+    <button type="button" data-vue="fiches">
+      <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2m8 1.5V8h4.5zM7 12v2h10v-2zm0 4v2h7v-2z"/></svg>
+      <span>Fiches</span>
+    </button>
+  </nav>
 
   <dialog id="settings" class="no-print">
     <form method="dialog" id="settings-form">
       <h2>Réglages</h2>
 
       <fieldset>
-        <legend>Lecture du planning</legend>
+        <legend>Taille du texte</legend>
+        <div class="taille-choix">
+          <label><input type="radio" name="taille" value="normal"><span style="font-size:15px">A</span></label>
+          <label><input type="radio" name="taille" value="grand"><span style="font-size:19px">A</span></label>
+          <label><input type="radio" name="taille" value="tres"><span style="font-size:24px">A</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Lecture d'un planning papier scanné</legend>
         <label class="check"><input type="radio" name="provider" value="local"> Sur le téléphone (gratuit, sans internet)</label>
         <div data-for="local">
           <p class="small">Lit la couleur de l'encre dans la colonne de chaque salarié : rouge = Repos, bleu = OK. Les autres mentions (CP, École, prénom…) sont signalées en orange pour vérification.</p>
@@ -83,7 +126,7 @@
 
       <fieldset>
         <legend>Salariés</legend>
-        <p class="small">Seuls les salariés cochés reçoivent une fiche. Quand le planning dit « OK », la fiche reprend leurs horaires habituels.</p>
+        <p class="small">Seuls les salariés cochés reçoivent une fiche. « OK » sur le planning = leurs horaires habituels. Les jours de repos habituels servent à préparer chaque nouveau mois.</p>
         <div id="s-employes"></div>
         <button type="button" id="s-add-emp" class="link-btn">+ Ajouter un salarié</button>
       </fieldset>
@@ -94,7 +137,7 @@
         <button type="button" id="s-clear" class="link-btn danger">Effacer tous les horaires enregistrés</button>
       </fieldset>
 
-      <p class="small version">Version 10</p>
+      <p class="small version">Version 11</p>
       <div class="dialog-actions">
         <button value="cancel" type="submit" class="big-btn">Annuler</button>
         <button value="save" type="submit" class="big-btn primary" id="s-save">Enregistrer</button>
