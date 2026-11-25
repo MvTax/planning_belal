@@ -292,7 +292,7 @@ export function initPlanning(ctx) {
     if (mode === "glisse") {
       const b = choixSous(x, y);
       if (b) choisir(b.dataset.id);
-      else mode = "toucher"; // doigt relâché sans choisir : la roue reste ouverte
+      else fermerRoue(); // doigt relâché au milieu ou ailleurs : on ferme sans rien changer
       return;
     }
     if (appui) {
@@ -329,7 +329,7 @@ export function initPlanning(ctx) {
   });
   window.addEventListener("touchcancel", () => {
     annulerAppui();
-    if (mode === "glisse") mode = "toucher";
+    if (mode === "glisse") fermerRoue();
   });
   // Souris (ordinateur) : mêmes gestes
   const viaTouch = () => Date.now() - dernierTouch < 800;
