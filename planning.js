@@ -105,7 +105,7 @@ export function initPlanning(ctx) {
   function rendre() {
     ecrire("fp.pl.courant", mois);
     const [y, m] = mois.split("-").map(Number);
-    titre.textContent = `${MOIS[m - 1][0].toUpperCase()}${MOIS[m - 1].slice(1)} ${y}`;
+    titre.innerHTML = `${MOIS[m - 1][0].toUpperCase()}${MOIS[m - 1].slice(1)} <span class="pl-annee">${y}</span>`;
     const vend = ctx.vendeurs();
     racine.style.setProperty("--nb-col", vend.length);
     entete.innerHTML =
@@ -113,8 +113,7 @@ export function initPlanning(ctx) {
       vend.map((v) => `<span class="pl-nom">${esc(prenom(v.nom))}</span>`).join("") +
       `<span class="pl-nom pl-nom-extra">Renforts</span>`;
     const aujourdhui = iso(new Date());
-    grille.innerHTML = joursDuMois(mois)
-      .map((d) => {
+    const lignes = joursDuMois(mois).map((d) => {
         const k = iso(d), j = donnees.jours[k] || {}, ji = jourIdx(d);
         const classes = ["pl-ligne"];
         if (ji >= 5) classes.push("we");
@@ -128,13 +127,22 @@ export function initPlanning(ctx) {
           })
           .join("");
         const ex = j.extras || [];
-        return `<div class="${classes.join(" ")}">
+        return {
+          lundi: ji === 0,
+          html: `<div class="${classes.join(" ")}">
           <div class="pl-jour"><span class="pl-jn">${JC[ji]}</span><span class="pl-jd">${d.getDate()}</span>${ferie ? `<span class="pl-ferie">Férié</span>` : ""}</div>
           ${cases}
           <button type="button" class="pl-case pl-extra" data-date="${k}" data-col="extras" aria-label="Renforts du ${JOURS[ji]} ${d.getDate()}">${puceExtras(ex)}</button>
-        </div>`;
-      })
-      .join("");
+        </div>`,
+        };
+      });
+    // Une carte blanche par semaine, comme les pages d'un agenda
+    const semaines = [];
+    for (const l of lignes) {
+      if (l.lundi || !semaines.length) semaines.push([]);
+      semaines[semaines.length - 1].push(l.html);
+    }
+    grille.innerHTML = semaines.map((s) => `<section class="pl-semaine">${s.join("")}</section>`).join("");
   }
 
   function puce(s) {

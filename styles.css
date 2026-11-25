@@ -1,14 +1,17 @@
 :root {
-  --bg: #f2f3f7;
+  --bg: #f7f4ee;
   --card: #ffffff;
-  --text: #16181d;
-  --muted: #5d6470;
-  --line: #d9dce3;
-  --primary: #1d3b8f;
+  --text: #18202e;
+  --muted: #6b7280;
+  --line: #e6e1d6;
+  --primary: #1c2f5e;
   --primary-text: #ffffff;
-  --warn-bg: #fff4e0;
-  --warn: #9a5b00;
+  --or: #b8893b;
+  --warn-bg: #fbf1de;
+  --warn: #8a5a12;
   --danger: #b3261e;
+  --serif: ui-serif, "New York", "Iowan Old Style", Georgia, serif;
+  --ombre: 0 1px 2px rgba(24, 32, 46, .05), 0 6px 18px rgba(24, 32, 46, .06);
   /* Couleurs de la fiche (identiques à l'écran et à l'impression) */
   --ink: #1d3b8f;
   --red: #c62828;
@@ -23,6 +26,7 @@ html, body {
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
 }
 
 .topbar {
@@ -457,3 +461,163 @@ body { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
   #vue-fiches { display: block !important; }
   body { padding: 0 !important; }
 }
+
+
+/* =====================================================================
+   THÈME ÉLÉGANT — papier chaud, encre profonde, une touche d'or
+   ===================================================================== */
+:root { --papier: #f7f4ee; --encre: #18202e; --trait: #ebe6da; }
+body, body.en-planning { background: var(--papier); }
+
+/* En-tête du planning */
+.pl-tete { background: var(--papier); padding: calc(4px + env(safe-area-inset-top)) 10px 0; box-shadow: none; }
+.pl-tete::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -14px; height: 14px; pointer-events: none;
+  background: linear-gradient(var(--papier), rgba(247, 244, 238, 0));
+}
+.pl-barre { padding: 4px 0 2px; }
+.pl-barre h1 {
+  font-family: var(--serif); font-weight: 600; letter-spacing: -.015em;
+  font-size: calc(28px * var(--t));
+}
+.pl-annee { color: var(--or); font-weight: 500; }
+.pl-btn {
+  width: 44px; height: 44px; border-radius: 22px;
+  background: #ede7da; color: var(--encre); font-size: 28px; font-weight: 400;
+}
+.pl-btn:active { background: #e2dac9; }
+.pl-engrenage { background: transparent; color: #8a8f98; margin-left: 2px; }
+.pl-cols { padding: 10px 0 8px; }
+.pl-nom {
+  font-size: calc(14px * var(--t)); font-weight: 700; color: #3a4252; letter-spacing: .01em;
+}
+.pl-nom-extra { color: #9aa0a8; font-weight: 600; font-size: calc(12.5px * var(--t)); }
+
+/* Semaines en cartes */
+.pl-grille { padding: 4px 10px 0; }
+.pl-semaine {
+  background: #fff; border-radius: 18px; box-shadow: var(--ombre);
+  padding: 2px 6px; margin-bottom: 12px; overflow: hidden;
+}
+.pl-ligne { border-bottom: 1px solid #f1ede4; padding: 5px 0; min-height: calc(56px * var(--t)); }
+.pl-ligne:last-child { border-bottom: 0; }
+.pl-ligne.lundi { border-top: 0; }
+.pl-ligne.we { background: #fbf4dc; margin: 0 -6px; padding-left: 6px; padding-right: 6px; border-bottom-color: #f3e8c4; }
+.pl-ligne.we .pl-jn { color: #9a7a1c; }
+
+.pl-jn { font-size: calc(11.5px * var(--t)); letter-spacing: .06em; text-transform: uppercase; color: #8a8f98; font-weight: 700; }
+.pl-jd { font-family: var(--serif); font-size: calc(23px * var(--t)); font-weight: 600; margin-top: 1px; }
+.pl-ferie {
+  margin-top: 2px; font-size: calc(9.5px * var(--t)); letter-spacing: .06em; color: #b3261e; font-weight: 800;
+}
+.pl-ligne.auj .pl-jour { background: var(--encre); color: #fff; box-shadow: inset 0 -3px 0 var(--or); }
+.pl-ligne.auj .pl-jn { color: #d9c69c; }
+
+/* Pastilles */
+.pl-puce {
+  border-radius: 13px; font-size: calc(15px * var(--t)); font-weight: 700; letter-spacing: -.01em;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .6);
+}
+.s-travail { background: #eaf0fb; color: #1e4bb0; }
+.s-repos { background: #fbe8e6; color: #b3261e; }
+.s-conge { background: #fcefdd; color: #a3560b; }
+.s-ecole { background: #f1ebfa; color: #6a3fa8; }
+.s-maladie { background: #eef0f3; color: #4f5b6b; }
+.s-absent { background: #283041; color: #fff; box-shadow: none; }
+.pl-vide { border: 1.5px dashed #ddd6c6; color: #c2b9a5; border-radius: 13px; }
+.pl-ex { background: #f2efe8; color: #4a5468; border-radius: 7px; font-weight: 600; }
+
+/* Bouton principal et astuce */
+.pl-pied { padding: 8px 14px 28px; }
+.pl-gros {
+  min-height: 62px; border-radius: 18px; gap: 10px;
+  background: var(--encre); border-color: var(--encre); color: #fff;
+  box-shadow: 0 8px 20px rgba(24, 32, 46, .18);
+  letter-spacing: .005em;
+}
+.pl-gros::before {
+  content: ""; width: 22px; height: 22px; flex: none;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2m8 1.5V8h4.5zM7 12v2h10v-2zm0 4v2h7v-2z'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2m8 1.5V8h4.5zM7 12v2h10v-2zm0 4v2h7v-2z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.pl-astuce { color: #8a8f98; font-size: calc(13.5px * var(--t)); }
+
+/* Roue */
+.roue-voile.ouvert { background: rgba(18, 24, 38, .55); }
+.roue-choix {
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--c) 78%, #fff) 0%, var(--c) 62%);
+  border: 3px solid rgba(255, 255, 255, .9);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .28);
+  letter-spacing: .01em;
+}
+.roue-voile.ouvert .roue-choix.survol { box-shadow: 0 0 0 5px rgba(255, 255, 255, .95), 0 12px 28px rgba(0, 0, 0, .35); }
+.roue-centre { background: #fff; color: #6b7280; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); }
+.roue-titre {
+  font-family: var(--serif); font-weight: 600; font-size: calc(19px * var(--t));
+  padding: 10px 20px; box-shadow: 0 10px 24px rgba(0, 0, 0, .22);
+}
+
+/* Renforts */
+.feuille { background: var(--papier); border-radius: 26px 26px 0 0; padding-top: 10px; }
+.feuille::before { content: ""; display: block; width: 44px; height: 5px; border-radius: 3px; background: #d9d2c3; margin: 0 auto 12px; }
+.feuille-titre { font-family: var(--serif); font-weight: 600; font-size: calc(22px * var(--t)); }
+.feuille-nom { background: #fff; border: 0; box-shadow: var(--ombre); border-radius: 16px; }
+.feuille-nom.on { background: var(--encre); color: #fff; box-shadow: 0 0 0 2px var(--or) inset; }
+.feuille-ajout { background: #ede7da !important; }
+.feuille-ok { background: var(--encre) !important; }
+
+/* Bandeau */
+.bandeau { background: var(--encre); border-radius: 16px; padding: 15px 18px; box-shadow: 0 12px 30px rgba(24, 32, 46, .3); }
+.bandeau span::before { content: "✓  "; color: var(--or); font-weight: 800; }
+.bandeau button { color: #f0cf8a; }
+
+/* Onglets */
+.onglets { background: #fffdf9; border-top: 1px solid var(--trait); box-shadow: 0 -6px 18px rgba(24, 32, 46, .04); }
+.onglets button { position: relative; color: #9aa0a8; font-weight: 600; }
+.onglets button.actif { color: var(--encre); font-weight: 800; }
+.onglets button.actif svg { color: var(--encre); }
+.onglets button.actif::before {
+  content: ""; position: absolute; top: 0; width: 36px; height: 3px; border-radius: 0 0 3px 3px; background: var(--or);
+}
+
+/* Écran Fiches, dans le même style */
+.topbar {
+  background: var(--papier); color: var(--encre);
+  padding: calc(8px + env(safe-area-inset-top)) 16px 6px;
+}
+.topbar h1 { font-family: var(--serif); font-weight: 600; font-size: calc(28px * var(--t)); letter-spacing: -.015em; }
+.topbar .icon-btn { color: #8a8f98; }
+.card { border-radius: 20px; box-shadow: var(--ombre); padding: 18px; }
+.card h2 { font-family: var(--serif); font-weight: 600; font-size: calc(21px * var(--t)); letter-spacing: -.01em; margin-bottom: 8px; }
+.hint, .small { font-size: calc(14px * var(--t)); }
+.big-btn { min-height: 56px; border-radius: 16px; font-size: calc(16.5px * var(--t)); border-color: var(--trait); }
+.big-btn.primary { background: var(--encre); border-color: var(--encre); box-shadow: 0 8px 20px rgba(24, 32, 46, .16); }
+#btn-print { min-height: 64px; font-size: calc(19px * var(--t)); gap: 10px; }
+#btn-print::before {
+  content: ""; width: 24px; height: 24px; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 3h10v4H7zm-2 5h14a3 3 0 0 1 3 3v6h-4v4H6v-4H2v-6a3 3 0 0 1 3-3m3 8v3h8v-3zm10-5a1 1 0 1 0 0 2 1 1 0 0 0 0-2'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 3h10v4H7zm-2 5h14a3 3 0 0 1 3 3v6h-4v4H6v-4H2v-6a3 3 0 0 1 3-3m3 8v3h8v-3zm10-5a1 1 0 1 0 0 2 1 1 0 0 0 0-2'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+#vide-fiches { text-align: center; padding: 28px 20px; }
+#vide-fiches::before {
+  content: ""; display: block; width: 56px; height: 56px; margin: 0 auto 12px; background: #d9d2c3;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2m8 1.5V8h4.5zM7 12v2h10v-2zm0 4v2h7v-2z'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2m8 1.5V8h4.5zM7 12v2h10v-2zm0 4v2h7v-2z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+#step-photo { background: transparent; box-shadow: none; border: 1.5px dashed #ddd6c6; }
+.page-wrap { border-radius: 6px; box-shadow: var(--ombre); }
+.page-label { font-family: var(--serif); color: #8a8f98; }
+
+/* Réglages en feuille élégante */
+dialog { background: var(--papier); border-radius: 24px; box-shadow: 0 24px 60px rgba(0, 0, 0, .3); }
+dialog::backdrop { background: rgba(18, 24, 38, .5); }
+dialog h2 { font-family: var(--serif); font-weight: 600; font-size: calc(26px * var(--t)); margin-bottom: 14px; }
+fieldset { background: #fff; border: 0; border-radius: 18px; box-shadow: var(--ombre); padding: 14px 14px 16px; margin-bottom: 16px; }
+legend {
+  float: left; width: 100%; padding: 0 0 10px; margin: 0;
+  font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #9a7a1c;
+}
+legend + * { clear: both; }
+.dialog-actions .big-btn { margin-top: 0; }
+.version { text-align: center; color: #b0a993; }
