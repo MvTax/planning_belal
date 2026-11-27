@@ -1,7 +1,7 @@
 // Mini-appli de pointage d'un salarié : un seul gros bouton (arrivée → pause → reprise → départ).
 // Tout reste sur le téléphone du salarié ; il envoie son mois au patron par message quand il veut.
 
-import { rpc, configValide } from "./supabase.js?v=2";
+import { rpc, configValide } from "./supabase.js?v=3";
 
 const JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
 const JC = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -81,15 +81,20 @@ const b64 = {
 
 let ident = lire("pt.id", null); // { n, b }
 let jours = lire("pt.jours", {}); // { "YYYY-MM-DD": { arrivee, debut_pause, fin_pause, depart } }
-let file = lire("pt.file", { maj: [], sup: [] }); // journées à envoyer / à supprimer sur le serveur
+let file = lire("pt.file", { maj: [], sup: [], env: [] }); // à envoyer / à supprimer chez le patron / déjà envoyées
+file.env ||= [];
 const sauver = () => ecrire("pt.jours", jours);
+// Chaque pointage est d'abord enregistré sur ce téléphone. L'envoi au patron se fait seulement quand
+// la journée est terminée (dernier pointage = départ), ou quand une journée passée est corrigée.
 function marquer(date) {
-  if (jours[date]?.arrivee) {
+  const j = jours[date];
+  if (j?.arrivee && j?.depart) {
     if (!file.maj.includes(date)) file.maj.push(date);
     file.sup = file.sup.filter((d) => d !== date);
   } else {
     file.maj = file.maj.filter((d) => d !== date);
-    if (!file.sup.includes(date)) file.sup.push(date);
+    // journée en cours, incomplète ou supprimée : si le patron a une ancienne version, on la retire
+    if (file.env.includes(date) && !file.sup.includes(date)) file.sup.push(date);
   }
   ecrire("pt.file", file);
   planifierSynchro();
@@ -134,9 +139,15 @@ function majSynchro() {
   const el = document.getElementById("sync");
   if (!el) return;
   const reste = file.maj.length + file.sup.length;
+  const auj = jours[aujourdHui()];
+  let classe = "ok", texte = "● Envoyé au patron";
+  if (etatSynchro === "erreur") [classe, texte] = ["erreur", "○ Envoi impossible, nouvel essai bientôt"];
+  else if (reste) [classe, texte] = ["attente", "○ À envoyer au patron… (dès que le réseau revient)"];
+  else if (auj?.arrivee && !auj.depart) [classe, texte] = ["local", "● Enregistré sur ce téléphone · envoyé au patron à votre départ"];
+  else if (!auj?.arrivee && !file.env.length) [classe, texte] = ["local", "Vos pointages sont envoyés au patron en fin de journée"];
   el.hidden = !enLigne();
-  el.className = `p-sync ${etatSynchro}`;
-  el.textContent = etatSynchro === "ok" ? "● Vu par le patron" : etatSynchro === "erreur" ? "○ Envoi impossible, nouvel essai bientôt" : reste ? "○ En attente de connexion…" : "● Vu par le patron";
+  el.className = `p-sync ${classe}`;
+  el.textContent = texte;
 }
 async function synchroniser() {
   if (!enLigne() || synchroEnCours) return;
@@ -147,10 +158,12 @@ async function synchroniser() {
       const lot = file.maj.slice(0, 60).map((d) => ({ jour: d, ...Object.fromEntries(CHAMPS.map((c) => [c, jours[d]?.[c] || ""])) }));
       await rpc(cfg, "pt_enregistrer", { p_jeton: ident.t, p_lot: lot });
       file.maj = file.maj.filter((d) => !lot.some((l) => l.jour === d));
+      for (const l of lot) if (!file.env.includes(l.jour)) file.env.push(l.jour);
     }
     for (const d of [...file.sup]) {
       await rpc(cfg, "pt_supprimer", { p_jeton: ident.t, p_jour: d });
       file.sup = file.sup.filter((x) => x !== d);
+      file.env = file.env.filter((x) => x !== d);
     }
     ecrire("pt.file", file);
     etatSynchro = file.maj.length ? "attente" : "ok";
@@ -266,6 +279,14 @@ function rendre() {
   $("chrono").textContent = p ? duree(m) : "0h00";
 
   majSynchro();
+  const oublis = Object.keys(jours).filter((d) => d < k && jours[d].arrivee && !jours[d].depart).sort();
+  const rappel = $("rappel");
+  rappel.hidden = !oublis.length;
+  if (oublis.length) {
+    const dt = dateDe(oublis[oublis.length - 1]);
+    rappel.textContent = `Départ oublié le ${JOURS[jourIdx(dt)]} ${dt.getDate()} : touchez ici pour le corriger`;
+    rappel.dataset.date = oublis[oublis.length - 1];
+  }
   $("envoyer").hidden = enLigne(); // en ligne, tout part tout seul
   $("note-envoi").hidden = enLigne();
 
@@ -450,6 +471,7 @@ $("jours").addEventListener("click", (e) => {
   const b = e.target.closest("[data-date]");
   if (b) editerJour(b.dataset.date);
 });
+$("rappel").addEventListener("click", () => $("rappel").dataset.date && editerJour($("rappel").dataset.date));
 $("gros").addEventListener("click", () => $("gros").dataset.etape && pointer($("gros").dataset.etape));
 $("sec").addEventListener("click", () => $("sec").dataset.etape && pointer($("sec").dataset.etape));
 $("annuler").addEventListener("click", () => {
