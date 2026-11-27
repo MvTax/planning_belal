@@ -1,7 +1,6 @@
 // Planning boutique — planning du mois en quelques gestes → planning imprimé + fiches de présence (PDF).
 // Aucune IA, aucun scan : tout est saisi sur le téléphone et reste dessus (localStorage).
-import { initPlanning, joursDuMois } from "./planning.js?v=29";
-import { rpc, configValide, codeAleatoire } from "./supabase.js?v=1";
+import { initPlanning, joursDuMois } from "./planning.js?v=30";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const JOURS_COURTS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -65,6 +64,9 @@ for (const k of ["fp.apikey", "fp.geminikey", "fp.gemini.models", "fp.lecture", 
 }
 
 const state = { settings: store.get("fp.settings", structuredClone(DEFAULT_SETTINGS)) };
+// Le pointage est en attente : on retire les données de pointage éventuellement enregistrées
+delete state.settings.sync;
+store.retirer("fp.pt.");
 delete state.settings.pause;
 for (const e of state.settings.employes) {
   e.horaires ||= structuredClone(HORAIRES_DEFAUT);
@@ -289,128 +291,6 @@ function vendeursDuPlanning() {
 }
 const salariesAImprimer = () => state.settings.employes.filter((e) => e.actif);
 
-// ---------- Pointage en direct (serveur Supabase) ----------
-const cfgSync = () => {
-  const c = state.settings.sync;
-  return c && c.actif && configValide(c) && (c.equipe || "").length >= 16 ? c : null;
-};
-let synchroPatronEnCours = false;
-let etatSynchroPatron = "";
-
-async function synchroPatron(forcer = false) {
-  const cfg = cfgSync();
-  if (!cfg || synchroPatronEnCours || (document.hidden && !forcer)) return;
-  synchroPatronEnCours = true;
-  try {
-    const mois = planning.mois();
-    const r = await rpc(cfg, "pt_equipe_lire", { p_equipe: cfg.equipe, p_mois: mois });
-    const tous = structuredClone(pointagesReels(mois));
-    const parNom = {};
-    for (const x of r.pointages || []) {
-      const emp = trouverSalarie(x.nom);
-      const cle = emp?.nom || x.nom;
-      (parNom[cle] ||= {})[x.jour] = Object.fromEntries(["arrivee", "debut_pause", "fin_pause", "depart"].map((c) => [c, x[c] || ""]));
-    }
-    // Pour les salariés gérés par le serveur, le serveur fait foi (y compris les journées supprimées)
-    for (const nom of r.employes || []) tous[trouverSalarie(nom)?.nom || nom] = parNom[trouverSalarie(nom)?.nom || nom] || {};
-    const avant = JSON.stringify(pointagesReels(mois));
-    const apres = JSON.stringify(tous);
-    etatSynchroPatron = "ok";
-    if (avant !== apres) {
-      ecrirePointages(mois, tous);
-      planning.majPointages();
-      if (!document.getElementById("vue-fiches").hidden) rendreFiches();
-    } else planning.majPointages();
-  } catch (err) {
-    etatSynchroPatron = err.reseau ? "hors-ligne" : "erreur";
-  } finally {
-    synchroPatronEnCours = false;
-  }
-}
-
-// ---------- Pointages reçus des salariés (lien) ----------
-const cleReels = (mois) => `fp.pt.${mois}`;
-const cachePt = new Map(); // lecture rapide (la grille lit ces données pour chaque case)
-const pointagesReels = (mois) => {
-  if (!cachePt.has(mois)) cachePt.set(mois, store.get(cleReels(mois), {})); // { nom: { "YYYY-MM-DD": {arrivee, debut_pause, fin_pause, depart} } }
-  return cachePt.get(mois);
-};
-const ecrirePointages = (mois, data) => {
-  cachePt.set(mois, data);
-  store.set(cleReels(mois), data);
-};
-const pointageDe = (nom, dateISO) => {
-  const emp = trouverSalarie(nom);
-  return pointagesReels(dateISO.slice(0, 7))[emp?.nom || nom]?.[dateISO] || null;
-};
-const statutLive = (nom) => {
-  const p = pointageDe(nom, toISO(new Date()));
-  if (!p?.arrivee || p.depart) return null;
-  return p.debut_pause && !p.fin_pause ? "pause" : "poste";
-};
-
-const b64 = {
-  vers: (o) => btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""),
-  depuis: (t) => JSON.parse(decodeURIComponent(escape(atob(t.replace(/-/g, "+").replace(/_/g, "/"))))),
-};
-
-function minutesPointees(p) {
-  if (!p?.arrivee || !p?.depart) return 0;
-  let t = toMin(p.depart) - toMin(p.arrivee);
-  if (t < 0) t += 1440;
-  if (p.debut_pause && p.fin_pause) t -= Math.max(0, toMin(p.fin_pause) - toMin(p.debut_pause));
-  return Math.max(0, t);
-}
-
-// Lien reçu d'un salarié (#import=…) : on propose d'ajouter ses pointages
-function lirePointagesRecus() {
-  const m = location.hash.match(/^#import=(.+)$/);
-  if (!m) return null;
-  history.replaceState(null, "", location.pathname + location.search);
-  try {
-    const c = b64.depuis(m[1]);
-    if (c?.v !== 1 || !/^\d{4}-\d{2}$/.test(c.m) || !c.n) return null;
-    const jours = {};
-    for (const [jj, v] of Object.entries(c.d || {})) {
-      const t = String(v).split(",").map((x) => (/^\d{4}$/.test(x) ? `${x.slice(0, 2)}:${x.slice(2)}` : ""));
-      if (!t[0]) continue;
-      jours[`${c.m}-${pad(Number(jj))}`] = { arrivee: t[0], debut_pause: t[1], fin_pause: t[2], depart: t[3] };
-    }
-    return { nom: String(c.n), mois: c.m, jours };
-  } catch {
-    return null;
-  }
-}
-
-function proposerImport(recu) {
-  const emp = trouverSalarie(recu.nom);
-  const nom = emp?.nom || recu.nom;
-  const [y, m] = recu.mois.split("-").map(Number);
-  const n = Object.keys(recu.jours).length;
-  const min = Object.values(recu.jours).reduce((t, p) => t + minutesPointees(p), 0);
-  const voile = document.createElement("div");
-  voile.className = "feuille-voile no-print ouvert";
-  voile.innerHTML = `<div class="feuille" role="dialog" aria-label="Pointages reçus">
-      <p class="feuille-titre">Pointages de ${esc(prenom(nom))}</p>
-      <p class="import-detail"><b>${MOIS[m - 1]} ${y}</b><br>${n} journée${n > 1 ? "s" : ""} · ${Math.floor(min / 60)} h ${pad(min % 60)}</p>
-      ${emp ? "" : `<p class="import-alerte">« ${esc(recu.nom)} » n'est pas dans votre équipe : ajoutez-le dans les réglages pour qu'il ait une fiche.</p>`}
-      <p class="import-detail petit">Ses heures réelles remplaceront les horaires habituels sur ses fiches, pour ces jours.</p>
-      <div class="feuille-actions"><button type="button" class="paie-secondaire" data-r="non">Ignorer</button><button type="button" class="paie-valider-gros" data-r="oui">Ajouter</button></div>
-    </div>`;
-  document.body.appendChild(voile);
-  voile.addEventListener("click", (e) => {
-    const r = e.target.closest("[data-r]")?.dataset.r;
-    if (!r && e.target !== voile) return;
-    voile.remove();
-    if (r !== "oui") return;
-    const tous = pointagesReels(recu.mois);
-    tous[nom] = { ...(tous[nom] || {}), ...recu.jours };
-    ecrirePointages(recu.mois, tous);
-    planning?.toast(`Pointages de ${prenom(nom)} ajoutés aux fiches de ${MOIS[m - 1]}`);
-    if (!document.getElementById("vue-fiches").hidden) rendreFiches();
-  });
-}
-
 // Ce que fait chaque salarié chaque jour, d'après le planning du mois
 function entreesDepuisPlanning(mois, donnees) {
   const dates = joursDuMois(mois).map(toISO);
@@ -421,9 +301,7 @@ function entreesDepuisPlanning(mois, donnees) {
       const j = donnees.jours[d] || {};
       const code = Number(emp.colonne) > 0 ? j[emp.colonne] : null;
       const enRenfort = (j.extras || []).some((n) => trouverSalarie(n) === emp);
-      const reel = pointagesReels(mois)[emp.nom]?.[d]; // heures pointées par le salarié, si reçues
-      if ((code === "travail" || (!code && enRenfort)) && reel?.arrivee && reel?.depart) jours[d] = { statut: "travail", ...VIDE, ...reel };
-      else if (code === "travail" || (!code && enRenfort)) jours[d] = { statut: "travail", ...heuresDuJour(emp, d) };
+      if (code === "travail" || (!code && enRenfort)) jours[d] = { statut: "travail", ...heuresDuJour(emp, d) };
       else if (code) jours[d] = { statut: code, ...VIDE };
     }
   }
@@ -510,9 +388,7 @@ function rendreFiches() {
     .join("");
   const nbSal = salariesAImprimer().length;
   document.getElementById("fiches-mois").textContent = `${MOIS[m - 1][0].toUpperCase()}${MOIS[m - 1].slice(1)} ${y}`;
-  const recus = Object.entries(pointagesReels(mois)).filter(([, j]) => Object.keys(j).length).map(([n]) => prenom(n));
-  document.getElementById("fiches-detail").textContent =
-    `Planning du mois + ${nbSal} fiche${nbSal > 1 ? "s" : ""} de présence · ${total} pages` + (recus.length ? ` · heures pointées : ${recus.join(", ")}` : "");
+  document.getElementById("fiches-detail").textContent = `Planning du mois + ${nbSal} fiche${nbSal > 1 ? "s" : ""} de présence · ${total} pages`;
   const nv = planning.nonValides();
   const alerte = document.getElementById("fiches-alerte");
   alerte.hidden = !nv;
@@ -535,7 +411,7 @@ function ajusterApercu() {
 
 // ---------- PDF : planning du mois (paysage) + fiches (portrait) ----------
 async function genererPDF(progression) {
-  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=29");
+  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=30");
   const sheets = [...document.querySelectorAll("#sheets .sheet")];
   const stage = document.createElement("div");
   stage.style.cssText = "position:fixed;left:-10000px;top:0;";
@@ -682,12 +558,6 @@ function imprimer() {
 function rendreReglages() {
   for (const r of document.querySelectorAll('input[name="taille"]')) r.checked = r.value === state.settings.taille;
   document.getElementById("s-tarif").value = state.settings.tarifExtra;
-  const sy = state.settings.sync || {};
-  document.getElementById("s-sb-url").value = sy.url || "";
-  document.getElementById("s-sb-key").value = sy.key || "";
-  document.getElementById("s-sb-equipe").value = sy.equipe || "";
-  document.getElementById("s-sb-actif").checked = !!sy.actif;
-  document.getElementById("s-sb-etat").textContent = "";
   const list = document.getElementById("s-employes");
   list.innerHTML = state.settings.employes
     .map(
@@ -725,7 +595,6 @@ function rendreReglages() {
             ).join("")}
           </div>
         </details>
-        <button type="button" class="ligne ligne-action lien-pointage">Envoyer son appli de pointage</button>
         <button type="button" class="ligne ligne-action rouge del">Supprimer ce salarié</button>
       </div>`,
     )
@@ -762,15 +631,6 @@ function lireReglages() {
   }
   state.settings.employes = employes;
   state.settings.taille = document.querySelector('input[name="taille"]:checked')?.value || "grand";
-  const url = document.getElementById("s-sb-url").value.trim().replace(/\/+$/, "");
-  const key = document.getElementById("s-sb-key").value.trim();
-  const ancien = state.settings.sync || {};
-  state.settings.sync = {
-    url,
-    key,
-    equipe: ancien.equipe || (url || key ? codeAleatoire(24) : ""),
-    actif: document.getElementById("s-sb-actif").checked && !!url && !!key,
-  };
   const tarif = Number(document.getElementById("s-tarif").value);
   state.settings.tarifExtra = Number.isFinite(tarif) && tarif >= 0 ? tarif : 100;
 }
@@ -807,8 +667,6 @@ function init() {
       save();
     },
     estFerie,
-    pointage: pointageDe,
-    statutLive,
     onFiches: () => montrerVue("fiches"),
     ouvrirReglages,
   });
@@ -822,35 +680,6 @@ function init() {
   });
   $("btn-settings").addEventListener("click", ouvrirReglages);
 
-  $("s-sb-copier").addEventListener("click", async () => {
-    const { SCHEMA_SQL } = await import("./schema-sql.js?v=1");
-    try {
-      await navigator.clipboard.writeText(SCHEMA_SQL);
-      $("s-sb-etat").textContent = "Script copié. Collez-le dans Supabase (SQL Editor) puis « Run ».";
-    } catch {
-      prompt("Copiez ce script :", SCHEMA_SQL);
-    }
-  });
-  $("s-sb-tester").addEventListener("click", async () => {
-    lireReglages();
-    const etat = $("s-sb-etat");
-    const c = state.settings.sync;
-    if (!configValide(c)) {
-      etat.textContent = "Renseignez l'adresse et la clé du projet.";
-      return;
-    }
-    etat.textContent = "Test en cours…";
-    try {
-      await rpc(c, "pt_equipe_lire", { p_equipe: c.equipe, p_mois: toISO(new Date()).slice(0, 7) });
-      state.settings.sync.actif = true;
-      $("s-sb-actif").checked = true;
-      $("s-sb-equipe").value = c.equipe;
-      save();
-      etat.textContent = "✓ Connexion réussie. Le pointage en direct est activé.";
-    } catch (err) {
-      etat.textContent = `✗ ${err.message}`;
-    }
-  });
   $("s-add-emp").addEventListener("click", () => {
     lireReglages();
     state.settings.employes.push({
@@ -865,34 +694,7 @@ function init() {
     const inputs = document.querySelectorAll("#s-employes .emp-nom");
     inputs[inputs.length - 1]?.focus();
   });
-  $("s-employes").addEventListener("click", async (ev) => {
-    if (ev.target.classList.contains("lien-pointage")) {
-      lireReglages();
-      const emp = state.settings.employes[Number(ev.target.closest(".emp").dataset.i)];
-      if (!emp?.nom) return;
-      const cfg = cfgSync();
-      let identite = { n: emp.nom, b: emp.boutique };
-      if (cfg) {
-        try {
-          const t = await rpc(cfg, "pt_equipe_employe", { p_equipe: cfg.equipe, p_nom: emp.nom });
-          identite = { ...identite, u: cfg.url, k: cfg.key, t };
-        } catch (err) {
-          alert(`Le serveur de pointage ne répond pas (${err.message}). Le lien envoyé fonctionnera en mode manuel.`);
-        }
-      }
-      const url = new URL(`pointage.html#e=${b64.vers(identite)}`, location.href).href;
-      const texte = `Bonjour ${prenom(emp.nom)}, voici ton appli de pointage. Ouvre le lien, puis « Sur l'écran d'accueil » pour l'ajouter :`;
-      try {
-        if (navigator.share) await navigator.share({ title: "Appli de pointage", text: texte, url });
-        else {
-          await navigator.clipboard.writeText(`${texte}\n${url}`);
-          alert("Lien copié : collez-le dans un message.");
-        }
-      } catch (err) {
-        if (err?.name !== "AbortError") prompt("Copiez ce lien et envoyez-le :", url);
-      }
-      return;
-    }
+  $("s-employes").addEventListener("click", (ev) => {
     if (!ev.target.classList.contains("del")) return;
     lireReglages();
     state.settings.employes.splice(Number(ev.target.closest(".emp").dataset.i), 1);
@@ -921,21 +723,7 @@ function init() {
     appliquerTaille();
     planning.rafraichir();
     if (!$("vue-fiches").hidden) rendreFiches();
-    synchroPatron(true);
   });
-
-  const recu = lirePointagesRecus();
-  if (recu) {
-    // On ouvre le mois concerné puis on propose l'ajout
-    planning.ouvrirMois(recu.mois);
-    proposerImport(recu);
-  }
-
-  synchroPatron(true);
-  setInterval(synchroPatron, 12000);
-  document.addEventListener("visibilitychange", () => !document.hidden && synchroPatron(true));
-  window.addEventListener("online", () => synchroPatron(true));
-  planning.surMois(() => synchroPatron(true));
 
   let t;
   window.addEventListener("resize", () => {

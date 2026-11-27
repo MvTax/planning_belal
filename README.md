@@ -16,28 +16,6 @@ Adresse une fois GitHub Pages activé : **https://mvtax.github.io/planning_belal
 
 Réglages (⚙︎) : taille du texte, salariés (colonne, horaires habituels, repos habituels, interrupteur « reçoit une fiche »), tarif d'un extra.
 
-## Pointage des salariés (mini-appli)
-
-Chaque salarié a sa mini-appli : un seul gros bouton **Arrivée → Pause → Reprise → Départ**, ses heures du jour / de la semaine / du mois, correction d'un oubli, annulation.
-
-### Mise en place du pointage en direct (une seule fois, ~10 min, gratuit)
-
-1. Créer un compte sur <https://supabase.com> puis **New project** (nom au choix, région Europe, un mot de passe quelconque).
-2. Dans le projet : **SQL Editor** → **New query**. Coller le script `supabase/schema.sql` (ou bouton « Copier le script » dans Réglages) → **Run**. Message « Success ».
-3. **Project Settings → API** (ou « Connect ») : copier **Project URL** et la clé **anon / publishable**.
-4. Dans l'appli du patron : ⚙︎ → **Pointage en direct** → coller l'adresse et la clé → **Enregistrer et tester la connexion**. Un code d'équipe est généré : le garder (il donne accès aux pointages).
-5. ⚙︎ → Équipe → un salarié → **Envoyer son appli de pointage** : lien personnel à envoyer par WhatsApp/SMS. Le salarié l'ouvre et l'ajoute à son écran d'accueil.
-
-Ensuite le fonctionnement est le suivant :
-- Pendant la journée, chaque pointage du salarié (arrivée, pause, reprise) est **enregistré sur son téléphone**.
-- Au **dernier pointage (le départ)**, la journée est envoyée automatiquement au patron. Une correction d'une journée passée est renvoyée aussi. Sans réseau, l'envoi se fait dès que la connexion revient.
-- Chez le patron, la case du jour affiche alors « OK 9h28 » (temps travaillé, pause déduite) et les fiches de présence reprennent les heures réelles.
-- Un départ oublié est signalé au salarié le lendemain (« Départ oublié le … : touchez pour le corriger »).
-
-Sécurité : les tables ne sont lisibles par personne directement ; seules les fonctions du script y accèdent, avec le code d'équipe (patron) ou le jeton personnel (salarié, une seule personne). La clé « anon » est publique par conception.
-
-Sans serveur, un mode manuel reste possible : le salarié envoie le lien de son mois, le patron l'ouvre et choisit « Ajouter ».
-
 ## Notes
 
 - Aucune IA, aucun scan, aucune donnée envoyée : tout reste sur le téléphone (localStorage).
@@ -47,7 +25,5 @@ Sans serveur, un mode manuel reste possible : le salarié envoie le lien de son 
 
 - `index.html`, `styles.css` : l'interface.
 - `planning.js` : planning du mois (roue de choix, renforts, extras payés, notes).
-- `supabase/schema.sql`, `schema-sql.js`, `supabase.js` : base de données et client des pointages en direct.
-- `pointage.html`, `pointage.js`, `pointage.css`, `sw.js`, `manifest-pointage.webmanifest` : mini-appli de pointage.
 - `app.js` : réglages, fiches de présence, planning imprimé, PDF.
 - `vendor/pdf.js` : jsPDF + html2canvas (création du PDF).
