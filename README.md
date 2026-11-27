@@ -18,10 +18,21 @@ Réglages (⚙︎) : taille du texte, salariés (colonne, horaires habituels, re
 
 ## Pointage des salariés (mini-appli)
 
-- Réglages (⚙︎) → Équipe → un salarié → **Envoyer son appli de pointage** : le patron envoie un lien personnel (WhatsApp, SMS…).
-- Le salarié ouvre le lien, puis Partager → Sur l'écran d'accueil. Un seul gros bouton : **Arrivée → Pause → Reprise → Départ**, avec ses heures du jour, de la semaine et du mois. Il peut corriger un oubli ou annuler le dernier pointage.
-- Quand il veut, **Envoyer mes pointages au patron** crée un lien. Le patron l'ouvre : « Ajouter » → ses heures réelles remplacent les horaires habituels sur ses fiches (pour les jours pointés).
-- Aucun serveur : les pointages restent sur le téléphone du salarié jusqu'à l'envoi.
+Chaque salarié a sa mini-appli : un seul gros bouton **Arrivée → Pause → Reprise → Départ**, ses heures du jour / de la semaine / du mois, correction d'un oubli, annulation.
+
+### Mise en place du pointage en direct (une seule fois, ~10 min, gratuit)
+
+1. Créer un compte sur <https://supabase.com> puis **New project** (nom au choix, région Europe, un mot de passe quelconque).
+2. Dans le projet : **SQL Editor** → **New query**. Coller le script `supabase/schema.sql` (ou bouton « Copier le script » dans Réglages) → **Run**. Message « Success ».
+3. **Project Settings → API** (ou « Connect ») : copier **Project URL** et la clé **anon / publishable**.
+4. Dans l'appli du patron : ⚙︎ → **Pointage en direct** → coller l'adresse et la clé → **Enregistrer et tester la connexion**. Un code d'équipe est généré : le garder (il donne accès aux pointages).
+5. ⚙︎ → Équipe → un salarié → **Envoyer son appli de pointage** : lien personnel à envoyer par WhatsApp/SMS. Le salarié l'ouvre et l'ajoute à son écran d'accueil.
+
+Ensuite chaque pointage arrive tout seul : en haut du planning s'affiche « ● Soso » (en poste) ou « ☕ en pause », la case du jour montre « OK ● 10h02 » puis « OK 9h28 » après le départ, et les fiches de présence reprennent les heures réelles.
+
+Sécurité : les tables ne sont lisibles par personne directement ; seules les fonctions du script y accèdent, avec le code d'équipe (patron) ou le jeton personnel (salarié, une seule personne). La clé « anon » est publique par conception.
+
+Sans serveur, un mode manuel reste possible : le salarié envoie le lien de son mois, le patron l'ouvre et choisit « Ajouter ».
 
 ## Notes
 
@@ -32,6 +43,7 @@ Réglages (⚙︎) : taille du texte, salariés (colonne, horaires habituels, re
 
 - `index.html`, `styles.css` : l'interface.
 - `planning.js` : planning du mois (roue de choix, renforts, extras payés, notes).
+- `supabase/schema.sql`, `schema-sql.js`, `supabase.js` : base de données et client des pointages en direct.
 - `pointage.html`, `pointage.js`, `pointage.css`, `sw.js`, `manifest-pointage.webmanifest` : mini-appli de pointage.
 - `app.js` : réglages, fiches de présence, planning imprimé, PDF.
 - `vendor/pdf.js` : jsPDF + html2canvas (création du PDF).

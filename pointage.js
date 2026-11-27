@@ -1,6 +1,8 @@
 // Mini-appli de pointage d'un salarié : un seul gros bouton (arrivée → pause → reprise → départ).
 // Tout reste sur le téléphone du salarié ; il envoie son mois au patron par message quand il veut.
 
+import { rpc, configValide } from "./supabase.js?v=2";
+
 const JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
 const JC = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 const MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
@@ -79,7 +81,22 @@ const b64 = {
 
 let ident = lire("pt.id", null); // { n, b }
 let jours = lire("pt.jours", {}); // { "YYYY-MM-DD": { arrivee, debut_pause, fin_pause, depart } }
+let file = lire("pt.file", { maj: [], sup: [] }); // journées à envoyer / à supprimer sur le serveur
 const sauver = () => ecrire("pt.jours", jours);
+function marquer(date) {
+  if (jours[date]?.arrivee) {
+    if (!file.maj.includes(date)) file.maj.push(date);
+    file.sup = file.sup.filter((d) => d !== date);
+  } else {
+    file.maj = file.maj.filter((d) => d !== date);
+    if (!file.sup.includes(date)) file.sup.push(date);
+  }
+  ecrire("pt.file", file);
+  planifierSynchro();
+}
+
+const identDe = (o) => ({ n: String(o.n), b: String(o.b || ""), u: o.u ? String(o.u) : "", k: o.k ? String(o.k) : "", t: o.t ? String(o.t) : "" });
+const enLigne = () => !!(ident && ident.t && configValide({ url: ident.u, key: ident.k }));
 
 // Lien personnel envoyé par le patron : #e=<identité>
 (function lireLien() {
@@ -88,10 +105,10 @@ const sauver = () => ecrire("pt.jours", jours);
   try {
     const nouveau = b64.depuis(m[1]);
     if (nouveau?.n && (!ident || ident.n === nouveau.n)) {
-      ident = { n: String(nouveau.n), b: String(nouveau.b || "") };
+      ident = identDe(nouveau);
       ecrire("pt.id", ident);
     } else if (nouveau?.n && confirm(`Cette appli est déjà celle de « ${ident.n} ». La remplacer par « ${nouveau.n} » ? Les pointages enregistrés seront effacés.`)) {
-      ident = { n: String(nouveau.n), b: String(nouveau.b || "") };
+      ident = identDe(nouveau);
       jours = {};
       ecrire("pt.id", ident);
       sauver();
@@ -101,6 +118,65 @@ const sauver = () => ecrire("pt.jours", jours);
   }
   history.replaceState(null, "", location.pathname + location.search);
 })();
+
+// ---------- Synchronisation avec le patron ----------
+let synchroEnCours = false;
+let tSynchro;
+let etatSynchro = ""; // "ok" | "attente" | "erreur" | ""
+function planifierSynchro() {
+  clearTimeout(tSynchro);
+  if (!enLigne()) return;
+  etatSynchro = "attente";
+  majSynchro();
+  tSynchro = setTimeout(synchroniser, 400);
+}
+function majSynchro() {
+  const el = document.getElementById("sync");
+  if (!el) return;
+  const reste = file.maj.length + file.sup.length;
+  el.hidden = !enLigne();
+  el.className = `p-sync ${etatSynchro}`;
+  el.textContent = etatSynchro === "ok" ? "● Vu par le patron" : etatSynchro === "erreur" ? "○ Envoi impossible, nouvel essai bientôt" : reste ? "○ En attente de connexion…" : "● Vu par le patron";
+}
+async function synchroniser() {
+  if (!enLigne() || synchroEnCours) return;
+  synchroEnCours = true;
+  const cfg = { url: ident.u, key: ident.k };
+  try {
+    if (file.maj.length) {
+      const lot = file.maj.slice(0, 60).map((d) => ({ jour: d, ...Object.fromEntries(CHAMPS.map((c) => [c, jours[d]?.[c] || ""])) }));
+      await rpc(cfg, "pt_enregistrer", { p_jeton: ident.t, p_lot: lot });
+      file.maj = file.maj.filter((d) => !lot.some((l) => l.jour === d));
+    }
+    for (const d of [...file.sup]) {
+      await rpc(cfg, "pt_supprimer", { p_jeton: ident.t, p_jour: d });
+      file.sup = file.sup.filter((x) => x !== d);
+    }
+    ecrire("pt.file", file);
+    etatSynchro = file.maj.length ? "attente" : "ok";
+    if (!lire("pt.recupere", false)) await recuperer(cfg);
+  } catch (err) {
+    etatSynchro = err.reseau ? "attente" : "erreur";
+    if (!err.reseau && /jeton inconnu/i.test(err.message)) bandeau("Cette appli n'est plus reconnue : demandez un nouveau lien au patron");
+  } finally {
+    synchroEnCours = false;
+    majSynchro();
+    if (file.maj.length) setTimeout(synchroniser, 1500);
+  }
+}
+// Nouveau téléphone : on récupère les journées déjà connues du serveur (sans écraser les locales)
+async function recuperer(cfg) {
+  const depuis = new Date();
+  depuis.setDate(depuis.getDate() - 70);
+  const r = await rpc(cfg, "pt_moi", { p_jeton: ident.t, p_depuis: iso(depuis) });
+  for (const x of r?.pointages || []) {
+    if (jours[x.jour]) continue;
+    jours[x.jour] = Object.fromEntries(CHAMPS.filter((c) => x[c]).map((c) => [c, x[c]]));
+  }
+  sauver();
+  ecrire("pt.recupere", true);
+  rendre();
+}
 
 // ---------- Éléments ----------
 const $ = (id) => document.getElementById(id);
@@ -120,6 +196,7 @@ function pointer(cle) {
   const p = (jours[k] ||= {});
   p[cle] = hm(new Date());
   sauver();
+  marquer(k);
   if (navigator.vibrate) navigator.vibrate(25);
   rendre();
   const e = ETAPES.find((x) => x.cle === cle);
@@ -138,6 +215,7 @@ function annulerDernier() {
   }
   if (!CHAMPS.some((c) => p[c])) delete jours[k];
   sauver();
+  marquer(k);
   rendre();
 }
 
@@ -186,6 +264,10 @@ function rendre() {
   }
   const m = minutes(p, hm(maintenant));
   $("chrono").textContent = p ? duree(m) : "0h00";
+
+  majSynchro();
+  $("envoyer").hidden = enLigne(); // en ligne, tout part tout seul
+  $("note-envoi").hidden = enLigne();
 
   // Pointages du jour
   const liste = $("pointages");
@@ -270,6 +352,8 @@ function editerJour(d, nouveau = false) {
           if (valeurs.arrivee || Object.keys(valeurs).length) jours[cle] = valeurs;
           else delete jours[cle];
           sauver();
+          marquer(cle);
+          if (!nouveau || cle !== d) marquer(d);
           fermer();
           rendre();
         },
@@ -283,6 +367,7 @@ function editerJour(d, nouveau = false) {
                 if (!confirm("Supprimer cette journée ?")) return;
                 delete jours[d];
                 sauver();
+                marquer(d);
                 fermer();
                 rendre();
               },
@@ -383,7 +468,7 @@ $("menu").addEventListener("click", () => {
         fait: () => {
           const n = document.getElementById("f-nom").value.trim();
           if (n) {
-            ident = { n, b: ident?.b || "" };
+            ident = { ...(ident || {}), n, b: ident?.b || "" };
             ecrire("pt.id", ident);
           }
           fermer();
@@ -421,7 +506,7 @@ if (!ident) {
         fait: () => {
           const n = document.getElementById("f-nom").value.trim();
           if (!n) return;
-          ident = { n, b: "" };
+          ident = { n, b: "", u: "", k: "", t: "" };
           ecrire("pt.id", ident);
           fermer();
           rendre();
@@ -431,6 +516,13 @@ if (!ident) {
   );
 }
 rendre();
+planifierSynchro();
 setInterval(rendre, 20000);
-document.addEventListener("visibilitychange", () => !document.hidden && rendre());
+setInterval(() => enLigne() && (file.maj.length || file.sup.length || etatSynchro !== "ok") && synchroniser(), 30000);
+window.addEventListener("online", () => synchroniser());
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) return;
+  rendre();
+  synchroniser();
+});
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});

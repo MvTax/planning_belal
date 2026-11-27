@@ -11,8 +11,8 @@
   <link rel="apple-touch-icon" href="icons/pointage-180.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Pointage">
-  <link rel="stylesheet" href="pointage.css?v=1">
-  <script type="module" src="pointage.js?v=1"></script>
+  <link rel="stylesheet" href="pointage.css?v=2">
+  <script type="module" src="pointage.js?v=2"></script>
 </head>
 <body>
   <header class="p-tete">
@@ -30,6 +30,7 @@
       <p class="p-etat" id="etat"></p>
       <p class="p-chrono" id="chrono">0h00</p>
       <p class="p-sous" id="sous"></p>
+      <p class="p-sync" id="sync" hidden></p>
       <button id="gros" class="p-gros" type="button"><span id="gros-txt">Pointer l'arrivée</span></button>
       <button id="sec" class="p-lien" type="button" hidden></button>
       <button id="annuler" class="p-lien discret" type="button" hidden>Annuler le dernier pointage</button>
@@ -51,7 +52,7 @@
     </section>
 
     <button id="envoyer" class="p-gros bleu petit" type="button"><span>Envoyer mes pointages au patron</span></button>
-    <p class="p-note">Vos pointages restent sur ce téléphone jusqu'à ce que vous les envoyiez.</p>
+    <p class="p-note" id="note-envoi">Vos pointages restent sur ce téléphone jusqu'à ce que vous les envoyiez.</p>
   </main>
 
   <div id="voile" class="p-voile" hidden>

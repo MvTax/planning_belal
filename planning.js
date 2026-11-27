@@ -105,6 +105,20 @@ export function initPlanning(ctx) {
   const sauver = () => ecrire(cle(mois), donnees);
 
   // ----- Affichage -----
+  // « En poste maintenant » : qui est pointé en ce moment (aujourd'hui seulement)
+  function majLive() {
+    const el = racine.querySelector("#pl-live");
+    if (!el) return;
+    const auj = iso(new Date());
+    const items = [];
+    for (const v of ctx.vendeurs()) {
+      const st = ctx.statutLive?.(v.nom);
+      if (st) items.push(`<span class="pl-live-i ${st}"><i></i>${esc(prenom(v.nom))}${st === "pause" ? " en pause" : ""}</span>`);
+    }
+    el.hidden = !items.length || mois !== auj.slice(0, 7);
+    el.innerHTML = items.join("");
+  }
+
   function rendre() {
     ecrire("fp.pl.courant", mois);
     const [y, m] = mois.split("-").map(Number);
@@ -126,7 +140,7 @@ export function initPlanning(ctx) {
         const cases = vend
           .map((v) => {
             const s = j[v.colonne];
-            return `<button type="button" class="pl-case" data-date="${k}" data-col="${v.colonne}" aria-label="${esc(prenom(v.nom))}, ${JOURS[ji]} ${d.getDate()}">${puce(s)}</button>`;
+            return `<button type="button" class="pl-case" data-date="${k}" data-col="${v.colonne}" aria-label="${esc(prenom(v.nom))}, ${JOURS[ji]} ${d.getDate()}">${puce(s, ctx.pointage?.(v.nom, k), k)}</button>`;
           })
           .join("");
         const ex = j.extras || [];
@@ -150,6 +164,7 @@ export function initPlanning(ctx) {
     }
     grille.innerHTML = semaines.map((w) => `<section class="pl-semaine">${w.a.join("")}</section>`).join("");
     pageCom.innerHTML = semaines.map((w) => `<section class="pl-semaine">${w.b.join("")}</section>`).join("");
+    majLive();
     resumePaie();
   }
 
@@ -214,9 +229,31 @@ export function initPlanning(ctx) {
     majPaie(k);
   }
 
-  function puce(s) {
+  // Pointage réel du salarié (heures pointées sur son téléphone), affiché dans la case
+  const hCourt = (t) => {
+    if (!t) return "";
+    const [h, m] = t.split(":");
+    return m === "00" ? `${Number(h)}h` : `${Number(h)}h${m}`;
+  };
+  function dureePt(p) {
+    if (!p?.arrivee || !p?.depart) return "";
+    const toMin = (x) => Number(x.slice(0, 2)) * 60 + Number(x.slice(3, 5));
+    let t = toMin(p.depart) - toMin(p.arrivee);
+    if (t < 0) t += 1440;
+    if (p.debut_pause && p.fin_pause) t -= Math.max(0, toMin(p.fin_pause) - toMin(p.debut_pause));
+    return `${Math.floor(t / 60)}h${pad(t % 60)}`;
+  }
+  function puce(s, pt) {
     const c = PAR_ID[s];
-    return c ? `<span class="pl-puce s-${c.id}">${c.court}</span>` : `<span class="pl-vide">·</span>`;
+    let info = "";
+    if (pt?.arrivee) {
+      const enCours = !pt.depart;
+      const enPause = enCours && pt.debut_pause && !pt.fin_pause;
+      info = `<small class="pl-pt${enCours ? (enPause ? " pause" : " direct") : ""}">${enCours ? `${enPause ? "☕ " : "● "}${hCourt(pt.arrivee)}` : dureePt(pt)}</small>`;
+    }
+    if (!c && !info) return `<span class="pl-vide">·</span>`;
+    if (!c) return `<span class="pl-puce s-travail sans-planning">${info}</span>`;
+    return `<span class="pl-puce s-${c.id}${info ? " avec-pt" : ""}"><span class="pl-puce-t">${c.court}</span>${info}</span>`;
   }
   function puceExtras(ex) {
     if (!ex.length) return `<span class="pl-vide">+</span>`;
@@ -228,7 +265,8 @@ export function initPlanning(ctx) {
     const b = grille.querySelector(`.pl-case[data-date="${date}"][data-col="${col}"]`);
     if (!b) return;
     const j = donnees.jours[date] || {};
-    b.innerHTML = col === "extras" ? puceExtras(j.extras || []) : puce(j[col]);
+    const v = ctx.vendeurs().find((e) => String(e.colonne) === String(col));
+    b.innerHTML = col === "extras" ? puceExtras(j.extras || []) : puce(j[col], v ? ctx.pointage?.(v.nom, date) : null);
     b.classList.remove("flash");
     void b.offsetWidth;
     b.classList.add("flash");
@@ -652,12 +690,14 @@ export function initPlanning(ctx) {
   onglets.forEach((b) => b.addEventListener("click", () => pages.scrollTo({ left: Number(b.dataset.page) * pages.clientWidth, behavior: "smooth" })));
 
   // ----- Navigation entre les mois -----
+  let surMois = null;
   function decaler(n) {
     const [y, m] = mois.split("-").map(Number);
     const d = new Date(y, m - 1 + n, 1);
     mois = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
     charger();
     rendre();
+    surMois?.();
     window.scrollTo({ top: 0 });
   }
   racine.querySelector("#pl-prec").addEventListener("click", () => decaler(-1));
@@ -672,10 +712,18 @@ export function initPlanning(ctx) {
       charger();
       rendre();
     },
+    surMois: (f) => (surMois = f),
     ouvrirMois: (m) => {
       mois = m;
       charger();
       rendre();
+    },
+    // Appelé quand de nouveaux pointages arrivent : on redessine sans déranger un geste en cours
+    majPointages: () => {
+      majLive();
+      if (cible || appui || !voile.hidden || !feuille.hidden || !paie.hidden || !noteF.hidden) return false;
+      rendre();
+      return true;
     },
     mois: () => mois,
     donnees: () => donnees,

@@ -988,3 +988,18 @@ table.pp { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .import-detail { text-align: center; font-size: calc(18px * var(--t)); line-height: 1.4; margin: 6px 0 12px; }
 .import-detail.petit { font-size: calc(14px * var(--t)); color: var(--sys-label2); }
 .import-alerte { background: rgba(255,149,0,.12); color: #8a5200; border-radius: 12px; padding: 10px 14px; font-size: calc(14.5px * var(--t)); margin: 0 0 12px; }
+
+/* Pointages réels dans les cases du planning */
+.pl-puce.avec-pt { flex-direction: column; gap: 0; line-height: 1.05; align-content: center; }
+.pl-puce.avec-pt { display: flex; align-items: center; justify-content: center; }
+.pl-puce-t { font-size: inherit; }
+.pl-pt { display: block; margin-top: 2px; font-size: max(10.5px, calc(11px * var(--t))); font-weight: 600; letter-spacing: -.02em; opacity: .85; font-variant-numeric: tabular-nums; }
+.pl-pt.direct { color: #248a3d; opacity: 1; }
+.pl-pt.pause { color: #c46a00; opacity: 1; }
+.pl-puce.sans-planning { display: flex; align-items: center; justify-content: center; border: 1.5px dashed rgba(0,122,255,.4); }
+.pl-live { display: flex; flex-wrap: wrap; gap: 6px 8px; padding: 8px 4px 2px; }
+.pl-live-i { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px 5px 9px; border-radius: 999px; font-size: calc(13.5px * var(--t)); font-weight: 600; background: rgba(52,199,89,.15); color: #1d7a37; }
+.pl-live-i i { width: 8px; height: 8px; border-radius: 50%; background: #34c759; animation: pouls 1.6s ease-in-out infinite; }
+.pl-live-i.pause { background: rgba(255,149,0,.16); color: #a35b00; }
+.pl-live-i.pause i { background: #ff9500; animation: none; }
+@keyframes pouls { 50% { opacity: .35; } }

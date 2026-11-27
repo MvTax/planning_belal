@@ -10,8 +10,8 @@
   <link rel="icon" type="image/png" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <meta name="apple-mobile-web-app-title" content="Planning">
-  <link rel="stylesheet" href="styles.css?v=28">
-  <script type="module" src="app.js?v=28"></script>
+  <link rel="stylesheet" href="styles.css?v=29">
+  <script type="module" src="app.js?v=29"></script>
 </head>
 <body class="en-planning">
   <section id="vue-planning" class="no-print" aria-label="Planning du mois">
@@ -28,6 +28,7 @@
         <button type="button" role="tab" data-page="0" class="actif">Planning</button>
         <button type="button" role="tab" data-page="1">Extras payés</button>
       </div>
+      <div id="pl-live" class="pl-live" hidden></div>
       <div class="pl-entetes">
         <div id="pl-cols" class="pl-cols"></div>
         <div id="pl-cols-com" class="pl-cols-com"></div>
@@ -145,6 +146,20 @@
       </section>
 
       <section class="groupe">
+        <h3 class="groupe-titre">Pointage en direct</h3>
+        <div class="liste">
+          <label class="ligne"><span class="ligne-nom">Activé</span><span class="interrupteur"><input type="checkbox" id="s-sb-actif"><i></i></span></label>
+          <label class="ligne ligne-col"><span class="ligne-nom">Adresse du projet Supabase</span><input type="text" id="s-sb-url" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="https://xxxx.supabase.co"></label>
+          <label class="ligne ligne-col"><span class="ligne-nom">Clé publique (anon / publishable)</span><input type="text" id="s-sb-key" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="eyJ… ou sb_publishable_…"></label>
+          <label class="ligne ligne-col"><span class="ligne-nom">Code d'équipe (généré, à garder)</span><input type="text" id="s-sb-equipe" readonly></label>
+          <button type="button" id="s-sb-tester" class="ligne ligne-action">Enregistrer et tester la connexion</button>
+          <button type="button" id="s-sb-copier" class="ligne ligne-action">Copier le script de la base de données</button>
+        </div>
+        <p class="groupe-note" id="s-sb-etat"></p>
+        <p class="groupe-note">Les pointages de chaque salarié arrivent alors tout seuls dans le planning. Marche à suivre complète dans le fichier README du projet.</p>
+      </section>
+
+      <section class="groupe">
         <h3 class="groupe-titre">Données</h3>
         <div class="liste">
           <button type="button" id="s-exemple" class="ligne ligne-action">Remettre le planning de novembre 2026</button>
@@ -152,7 +167,7 @@
         </div>
       </section>
 
-      <p class="version">Version 28</p>
+      <p class="version">Version 29</p>
     </form>
   </dialog>
 </body>

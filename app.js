@@ -1,6 +1,7 @@
 // Planning boutique — planning du mois en quelques gestes → planning imprimé + fiches de présence (PDF).
 // Aucune IA, aucun scan : tout est saisi sur le téléphone et reste dessus (localStorage).
-import { initPlanning, joursDuMois } from "./planning.js?v=28";
+import { initPlanning, joursDuMois } from "./planning.js?v=29";
+import { rpc, configValide, codeAleatoire } from "./supabase.js?v=1";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const JOURS_COURTS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -288,9 +289,65 @@ function vendeursDuPlanning() {
 }
 const salariesAImprimer = () => state.settings.employes.filter((e) => e.actif);
 
-// ---------- Pointages reçus des salariés ----------
+// ---------- Pointage en direct (serveur Supabase) ----------
+const cfgSync = () => {
+  const c = state.settings.sync;
+  return c && c.actif && configValide(c) && (c.equipe || "").length >= 16 ? c : null;
+};
+let synchroPatronEnCours = false;
+let etatSynchroPatron = "";
+
+async function synchroPatron(forcer = false) {
+  const cfg = cfgSync();
+  if (!cfg || synchroPatronEnCours || (document.hidden && !forcer)) return;
+  synchroPatronEnCours = true;
+  try {
+    const mois = planning.mois();
+    const r = await rpc(cfg, "pt_equipe_lire", { p_equipe: cfg.equipe, p_mois: mois });
+    const tous = structuredClone(pointagesReels(mois));
+    const parNom = {};
+    for (const x of r.pointages || []) {
+      const emp = trouverSalarie(x.nom);
+      const cle = emp?.nom || x.nom;
+      (parNom[cle] ||= {})[x.jour] = Object.fromEntries(["arrivee", "debut_pause", "fin_pause", "depart"].map((c) => [c, x[c] || ""]));
+    }
+    // Pour les salariés gérés par le serveur, le serveur fait foi (y compris les journées supprimées)
+    for (const nom of r.employes || []) tous[trouverSalarie(nom)?.nom || nom] = parNom[trouverSalarie(nom)?.nom || nom] || {};
+    const avant = JSON.stringify(pointagesReels(mois));
+    const apres = JSON.stringify(tous);
+    etatSynchroPatron = "ok";
+    if (avant !== apres) {
+      ecrirePointages(mois, tous);
+      planning.majPointages();
+      if (!document.getElementById("vue-fiches").hidden) rendreFiches();
+    } else planning.majPointages();
+  } catch (err) {
+    etatSynchroPatron = err.reseau ? "hors-ligne" : "erreur";
+  } finally {
+    synchroPatronEnCours = false;
+  }
+}
+
+// ---------- Pointages reçus des salariés (lien) ----------
 const cleReels = (mois) => `fp.pt.${mois}`;
-const pointagesReels = (mois) => store.get(cleReels(mois), {}); // { nom: { "YYYY-MM-DD": {arrivee, debut_pause, fin_pause, depart} } }
+const cachePt = new Map(); // lecture rapide (la grille lit ces données pour chaque case)
+const pointagesReels = (mois) => {
+  if (!cachePt.has(mois)) cachePt.set(mois, store.get(cleReels(mois), {})); // { nom: { "YYYY-MM-DD": {arrivee, debut_pause, fin_pause, depart} } }
+  return cachePt.get(mois);
+};
+const ecrirePointages = (mois, data) => {
+  cachePt.set(mois, data);
+  store.set(cleReels(mois), data);
+};
+const pointageDe = (nom, dateISO) => {
+  const emp = trouverSalarie(nom);
+  return pointagesReels(dateISO.slice(0, 7))[emp?.nom || nom]?.[dateISO] || null;
+};
+const statutLive = (nom) => {
+  const p = pointageDe(nom, toISO(new Date()));
+  if (!p?.arrivee || p.depart) return null;
+  return p.debut_pause && !p.fin_pause ? "pause" : "poste";
+};
 
 const b64 = {
   vers: (o) => btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""),
@@ -348,7 +405,7 @@ function proposerImport(recu) {
     if (r !== "oui") return;
     const tous = pointagesReels(recu.mois);
     tous[nom] = { ...(tous[nom] || {}), ...recu.jours };
-    store.set(cleReels(recu.mois), tous);
+    ecrirePointages(recu.mois, tous);
     planning?.toast(`Pointages de ${prenom(nom)} ajoutés aux fiches de ${MOIS[m - 1]}`);
     if (!document.getElementById("vue-fiches").hidden) rendreFiches();
   });
@@ -478,7 +535,7 @@ function ajusterApercu() {
 
 // ---------- PDF : planning du mois (paysage) + fiches (portrait) ----------
 async function genererPDF(progression) {
-  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=28");
+  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=29");
   const sheets = [...document.querySelectorAll("#sheets .sheet")];
   const stage = document.createElement("div");
   stage.style.cssText = "position:fixed;left:-10000px;top:0;";
@@ -625,6 +682,12 @@ function imprimer() {
 function rendreReglages() {
   for (const r of document.querySelectorAll('input[name="taille"]')) r.checked = r.value === state.settings.taille;
   document.getElementById("s-tarif").value = state.settings.tarifExtra;
+  const sy = state.settings.sync || {};
+  document.getElementById("s-sb-url").value = sy.url || "";
+  document.getElementById("s-sb-key").value = sy.key || "";
+  document.getElementById("s-sb-equipe").value = sy.equipe || "";
+  document.getElementById("s-sb-actif").checked = !!sy.actif;
+  document.getElementById("s-sb-etat").textContent = "";
   const list = document.getElementById("s-employes");
   list.innerHTML = state.settings.employes
     .map(
@@ -699,6 +762,15 @@ function lireReglages() {
   }
   state.settings.employes = employes;
   state.settings.taille = document.querySelector('input[name="taille"]:checked')?.value || "grand";
+  const url = document.getElementById("s-sb-url").value.trim().replace(/\/+$/, "");
+  const key = document.getElementById("s-sb-key").value.trim();
+  const ancien = state.settings.sync || {};
+  state.settings.sync = {
+    url,
+    key,
+    equipe: ancien.equipe || (url || key ? codeAleatoire(24) : ""),
+    actif: document.getElementById("s-sb-actif").checked && !!url && !!key,
+  };
   const tarif = Number(document.getElementById("s-tarif").value);
   state.settings.tarifExtra = Number.isFinite(tarif) && tarif >= 0 ? tarif : 100;
 }
@@ -735,6 +807,8 @@ function init() {
       save();
     },
     estFerie,
+    pointage: pointageDe,
+    statutLive,
     onFiches: () => montrerVue("fiches"),
     ouvrirReglages,
   });
@@ -748,6 +822,35 @@ function init() {
   });
   $("btn-settings").addEventListener("click", ouvrirReglages);
 
+  $("s-sb-copier").addEventListener("click", async () => {
+    const { SCHEMA_SQL } = await import("./schema-sql.js?v=1");
+    try {
+      await navigator.clipboard.writeText(SCHEMA_SQL);
+      $("s-sb-etat").textContent = "Script copié. Collez-le dans Supabase (SQL Editor) puis « Run ».";
+    } catch {
+      prompt("Copiez ce script :", SCHEMA_SQL);
+    }
+  });
+  $("s-sb-tester").addEventListener("click", async () => {
+    lireReglages();
+    const etat = $("s-sb-etat");
+    const c = state.settings.sync;
+    if (!configValide(c)) {
+      etat.textContent = "Renseignez l'adresse et la clé du projet.";
+      return;
+    }
+    etat.textContent = "Test en cours…";
+    try {
+      await rpc(c, "pt_equipe_lire", { p_equipe: c.equipe, p_mois: toISO(new Date()).slice(0, 7) });
+      state.settings.sync.actif = true;
+      $("s-sb-actif").checked = true;
+      $("s-sb-equipe").value = c.equipe;
+      save();
+      etat.textContent = "✓ Connexion réussie. Le pointage en direct est activé.";
+    } catch (err) {
+      etat.textContent = `✗ ${err.message}`;
+    }
+  });
   $("s-add-emp").addEventListener("click", () => {
     lireReglages();
     state.settings.employes.push({
@@ -767,7 +870,17 @@ function init() {
       lireReglages();
       const emp = state.settings.employes[Number(ev.target.closest(".emp").dataset.i)];
       if (!emp?.nom) return;
-      const url = new URL(`pointage.html#e=${b64.vers({ n: emp.nom, b: emp.boutique })}`, location.href).href;
+      const cfg = cfgSync();
+      let identite = { n: emp.nom, b: emp.boutique };
+      if (cfg) {
+        try {
+          const t = await rpc(cfg, "pt_equipe_employe", { p_equipe: cfg.equipe, p_nom: emp.nom });
+          identite = { ...identite, u: cfg.url, k: cfg.key, t };
+        } catch (err) {
+          alert(`Le serveur de pointage ne répond pas (${err.message}). Le lien envoyé fonctionnera en mode manuel.`);
+        }
+      }
+      const url = new URL(`pointage.html#e=${b64.vers(identite)}`, location.href).href;
       const texte = `Bonjour ${prenom(emp.nom)}, voici ton appli de pointage. Ouvre le lien, puis « Sur l'écran d'accueil » pour l'ajouter :`;
       try {
         if (navigator.share) await navigator.share({ title: "Appli de pointage", text: texte, url });
@@ -808,6 +921,7 @@ function init() {
     appliquerTaille();
     planning.rafraichir();
     if (!$("vue-fiches").hidden) rendreFiches();
+    synchroPatron(true);
   });
 
   const recu = lirePointagesRecus();
@@ -816,6 +930,12 @@ function init() {
     planning.ouvrirMois(recu.mois);
     proposerImport(recu);
   }
+
+  synchroPatron(true);
+  setInterval(synchroPatron, 12000);
+  document.addEventListener("visibilitychange", () => !document.hidden && synchroPatron(true));
+  window.addEventListener("online", () => synchroPatron(true));
+  planning.surMois(() => synchroPatron(true));
 
   let t;
   window.addEventListener("resize", () => {
