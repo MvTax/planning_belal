@@ -672,6 +672,11 @@ export function initPlanning(ctx) {
       charger();
       rendre();
     },
+    ouvrirMois: (m) => {
+      mois = m;
+      charger();
+      rendre();
+    },
     mois: () => mois,
     donnees: () => donnees,
     // Texte de la colonne « Commentaires » imprimée : paiement validé + note

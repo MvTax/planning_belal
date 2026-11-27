@@ -1,6 +1,6 @@
 // Planning boutique — planning du mois en quelques gestes → planning imprimé + fiches de présence (PDF).
 // Aucune IA, aucun scan : tout est saisi sur le téléphone et reste dessus (localStorage).
-import { initPlanning, joursDuMois } from "./planning.js?v=27";
+import { initPlanning, joursDuMois } from "./planning.js?v=28";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const JOURS_COURTS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -288,6 +288,72 @@ function vendeursDuPlanning() {
 }
 const salariesAImprimer = () => state.settings.employes.filter((e) => e.actif);
 
+// ---------- Pointages reçus des salariés ----------
+const cleReels = (mois) => `fp.pt.${mois}`;
+const pointagesReels = (mois) => store.get(cleReels(mois), {}); // { nom: { "YYYY-MM-DD": {arrivee, debut_pause, fin_pause, depart} } }
+
+const b64 = {
+  vers: (o) => btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""),
+  depuis: (t) => JSON.parse(decodeURIComponent(escape(atob(t.replace(/-/g, "+").replace(/_/g, "/"))))),
+};
+
+function minutesPointees(p) {
+  if (!p?.arrivee || !p?.depart) return 0;
+  let t = toMin(p.depart) - toMin(p.arrivee);
+  if (t < 0) t += 1440;
+  if (p.debut_pause && p.fin_pause) t -= Math.max(0, toMin(p.fin_pause) - toMin(p.debut_pause));
+  return Math.max(0, t);
+}
+
+// Lien reçu d'un salarié (#import=…) : on propose d'ajouter ses pointages
+function lirePointagesRecus() {
+  const m = location.hash.match(/^#import=(.+)$/);
+  if (!m) return null;
+  history.replaceState(null, "", location.pathname + location.search);
+  try {
+    const c = b64.depuis(m[1]);
+    if (c?.v !== 1 || !/^\d{4}-\d{2}$/.test(c.m) || !c.n) return null;
+    const jours = {};
+    for (const [jj, v] of Object.entries(c.d || {})) {
+      const t = String(v).split(",").map((x) => (/^\d{4}$/.test(x) ? `${x.slice(0, 2)}:${x.slice(2)}` : ""));
+      if (!t[0]) continue;
+      jours[`${c.m}-${pad(Number(jj))}`] = { arrivee: t[0], debut_pause: t[1], fin_pause: t[2], depart: t[3] };
+    }
+    return { nom: String(c.n), mois: c.m, jours };
+  } catch {
+    return null;
+  }
+}
+
+function proposerImport(recu) {
+  const emp = trouverSalarie(recu.nom);
+  const nom = emp?.nom || recu.nom;
+  const [y, m] = recu.mois.split("-").map(Number);
+  const n = Object.keys(recu.jours).length;
+  const min = Object.values(recu.jours).reduce((t, p) => t + minutesPointees(p), 0);
+  const voile = document.createElement("div");
+  voile.className = "feuille-voile no-print ouvert";
+  voile.innerHTML = `<div class="feuille" role="dialog" aria-label="Pointages reçus">
+      <p class="feuille-titre">Pointages de ${esc(prenom(nom))}</p>
+      <p class="import-detail"><b>${MOIS[m - 1]} ${y}</b><br>${n} journée${n > 1 ? "s" : ""} · ${Math.floor(min / 60)} h ${pad(min % 60)}</p>
+      ${emp ? "" : `<p class="import-alerte">« ${esc(recu.nom)} » n'est pas dans votre équipe : ajoutez-le dans les réglages pour qu'il ait une fiche.</p>`}
+      <p class="import-detail petit">Ses heures réelles remplaceront les horaires habituels sur ses fiches, pour ces jours.</p>
+      <div class="feuille-actions"><button type="button" class="paie-secondaire" data-r="non">Ignorer</button><button type="button" class="paie-valider-gros" data-r="oui">Ajouter</button></div>
+    </div>`;
+  document.body.appendChild(voile);
+  voile.addEventListener("click", (e) => {
+    const r = e.target.closest("[data-r]")?.dataset.r;
+    if (!r && e.target !== voile) return;
+    voile.remove();
+    if (r !== "oui") return;
+    const tous = pointagesReels(recu.mois);
+    tous[nom] = { ...(tous[nom] || {}), ...recu.jours };
+    store.set(cleReels(recu.mois), tous);
+    planning?.toast(`Pointages de ${prenom(nom)} ajoutés aux fiches de ${MOIS[m - 1]}`);
+    if (!document.getElementById("vue-fiches").hidden) rendreFiches();
+  });
+}
+
 // Ce que fait chaque salarié chaque jour, d'après le planning du mois
 function entreesDepuisPlanning(mois, donnees) {
   const dates = joursDuMois(mois).map(toISO);
@@ -298,7 +364,9 @@ function entreesDepuisPlanning(mois, donnees) {
       const j = donnees.jours[d] || {};
       const code = Number(emp.colonne) > 0 ? j[emp.colonne] : null;
       const enRenfort = (j.extras || []).some((n) => trouverSalarie(n) === emp);
-      if (code === "travail" || (!code && enRenfort)) jours[d] = { statut: "travail", ...heuresDuJour(emp, d) };
+      const reel = pointagesReels(mois)[emp.nom]?.[d]; // heures pointées par le salarié, si reçues
+      if ((code === "travail" || (!code && enRenfort)) && reel?.arrivee && reel?.depart) jours[d] = { statut: "travail", ...VIDE, ...reel };
+      else if (code === "travail" || (!code && enRenfort)) jours[d] = { statut: "travail", ...heuresDuJour(emp, d) };
       else if (code) jours[d] = { statut: code, ...VIDE };
     }
   }
@@ -385,7 +453,9 @@ function rendreFiches() {
     .join("");
   const nbSal = salariesAImprimer().length;
   document.getElementById("fiches-mois").textContent = `${MOIS[m - 1][0].toUpperCase()}${MOIS[m - 1].slice(1)} ${y}`;
-  document.getElementById("fiches-detail").textContent = `Planning du mois + ${nbSal} fiche${nbSal > 1 ? "s" : ""} de présence · ${total} pages`;
+  const recus = Object.entries(pointagesReels(mois)).filter(([, j]) => Object.keys(j).length).map(([n]) => prenom(n));
+  document.getElementById("fiches-detail").textContent =
+    `Planning du mois + ${nbSal} fiche${nbSal > 1 ? "s" : ""} de présence · ${total} pages` + (recus.length ? ` · heures pointées : ${recus.join(", ")}` : "");
   const nv = planning.nonValides();
   const alerte = document.getElementById("fiches-alerte");
   alerte.hidden = !nv;
@@ -408,7 +478,7 @@ function ajusterApercu() {
 
 // ---------- PDF : planning du mois (paysage) + fiches (portrait) ----------
 async function genererPDF(progression) {
-  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=27");
+  const { jsPDF, html2canvas } = await import("./vendor/pdf.js?v=28");
   const sheets = [...document.querySelectorAll("#sheets .sheet")];
   const stage = document.createElement("div");
   stage.style.cssText = "position:fixed;left:-10000px;top:0;";
@@ -592,6 +662,7 @@ function rendreReglages() {
             ).join("")}
           </div>
         </details>
+        <button type="button" class="ligne ligne-action lien-pointage">Envoyer son appli de pointage</button>
         <button type="button" class="ligne ligne-action rouge del">Supprimer ce salarié</button>
       </div>`,
     )
@@ -691,7 +762,24 @@ function init() {
     const inputs = document.querySelectorAll("#s-employes .emp-nom");
     inputs[inputs.length - 1]?.focus();
   });
-  $("s-employes").addEventListener("click", (ev) => {
+  $("s-employes").addEventListener("click", async (ev) => {
+    if (ev.target.classList.contains("lien-pointage")) {
+      lireReglages();
+      const emp = state.settings.employes[Number(ev.target.closest(".emp").dataset.i)];
+      if (!emp?.nom) return;
+      const url = new URL(`pointage.html#e=${b64.vers({ n: emp.nom, b: emp.boutique })}`, location.href).href;
+      const texte = `Bonjour ${prenom(emp.nom)}, voici ton appli de pointage. Ouvre le lien, puis « Sur l'écran d'accueil » pour l'ajouter :`;
+      try {
+        if (navigator.share) await navigator.share({ title: "Appli de pointage", text: texte, url });
+        else {
+          await navigator.clipboard.writeText(`${texte}\n${url}`);
+          alert("Lien copié : collez-le dans un message.");
+        }
+      } catch (err) {
+        if (err?.name !== "AbortError") prompt("Copiez ce lien et envoyez-le :", url);
+      }
+      return;
+    }
     if (!ev.target.classList.contains("del")) return;
     lireReglages();
     state.settings.employes.splice(Number(ev.target.closest(".emp").dataset.i), 1);
@@ -721,6 +809,13 @@ function init() {
     planning.rafraichir();
     if (!$("vue-fiches").hidden) rendreFiches();
   });
+
+  const recu = lirePointagesRecus();
+  if (recu) {
+    // On ouvre le mois concerné puis on propose l'ajout
+    planning.ouvrirMois(recu.mois);
+    proposerImport(recu);
+  }
 
   let t;
   window.addEventListener("resize", () => {

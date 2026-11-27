@@ -983,3 +983,8 @@ table.pp { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .sheet th { background: #e4eaf5; color: #1b2a49; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .sheet .pp th.pp-nom { background: #f0f3f9; color: var(--ink); }
 .sheet .pp th[rowspan], .sheet .pp th:not(.pp-nom) { background: #e4eaf5; }
+
+/* Pointages reçus d'un salarié */
+.import-detail { text-align: center; font-size: calc(18px * var(--t)); line-height: 1.4; margin: 6px 0 12px; }
+.import-detail.petit { font-size: calc(14px * var(--t)); color: var(--sys-label2); }
+.import-alerte { background: rgba(255,149,0,.12); color: #8a5200; border-radius: 12px; padding: 10px 14px; font-size: calc(14.5px * var(--t)); margin: 0 0 12px; }

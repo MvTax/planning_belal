@@ -16,6 +16,13 @@ Adresse une fois GitHub Pages activé : **https://mvtax.github.io/planning_belal
 
 Réglages (⚙︎) : taille du texte, salariés (colonne, horaires habituels, repos habituels, interrupteur « reçoit une fiche »), tarif d'un extra.
 
+## Pointage des salariés (mini-appli)
+
+- Réglages (⚙︎) → Équipe → un salarié → **Envoyer son appli de pointage** : le patron envoie un lien personnel (WhatsApp, SMS…).
+- Le salarié ouvre le lien, puis Partager → Sur l'écran d'accueil. Un seul gros bouton : **Arrivée → Pause → Reprise → Départ**, avec ses heures du jour, de la semaine et du mois. Il peut corriger un oubli ou annuler le dernier pointage.
+- Quand il veut, **Envoyer mes pointages au patron** crée un lien. Le patron l'ouvre : « Ajouter » → ses heures réelles remplacent les horaires habituels sur ses fiches (pour les jours pointés).
+- Aucun serveur : les pointages restent sur le téléphone du salarié jusqu'à l'envoi.
+
 ## Notes
 
 - Aucune IA, aucun scan, aucune donnée envoyée : tout reste sur le téléphone (localStorage).
@@ -25,5 +32,6 @@ Réglages (⚙︎) : taille du texte, salariés (colonne, horaires habituels, re
 
 - `index.html`, `styles.css` : l'interface.
 - `planning.js` : planning du mois (roue de choix, renforts, extras payés, notes).
+- `pointage.html`, `pointage.js`, `pointage.css`, `sw.js`, `manifest-pointage.webmanifest` : mini-appli de pointage.
 - `app.js` : réglages, fiches de présence, planning imprimé, PDF.
 - `vendor/pdf.js` : jsPDF + html2canvas (création du PDF).

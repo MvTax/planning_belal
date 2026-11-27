@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Pointage</title>
+  <meta name="description" content="Pointer l'arrivée, la pause et le départ en un seul bouton.">
+  <meta name="theme-color" content="#f2f2f7">
+  <link rel="manifest" href="manifest-pointage.webmanifest">
+  <link rel="icon" type="image/png" href="icons/pointage-192.png">
+  <link rel="apple-touch-icon" href="icons/pointage-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Pointage">
+  <link rel="stylesheet" href="pointage.css?v=1">
+  <script type="module" src="pointage.js?v=1"></script>
+</head>
+<body>
+  <header class="p-tete">
+    <div>
+      <p class="p-date" id="date"></p>
+      <h1 id="nom">Pointage</h1>
+    </div>
+    <button id="menu" class="p-rond" type="button" aria-label="Mon profil">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="currentColor"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z" fill="currentColor"/></svg>
+    </button>
+  </header>
+
+  <main>
+    <section class="p-carte" id="carte">
+      <p class="p-etat" id="etat"></p>
+      <p class="p-chrono" id="chrono">0h00</p>
+      <p class="p-sous" id="sous"></p>
+      <button id="gros" class="p-gros" type="button"><span id="gros-txt">Pointer l'arrivée</span></button>
+      <button id="sec" class="p-lien" type="button" hidden></button>
+      <button id="annuler" class="p-lien discret" type="button" hidden>Annuler le dernier pointage</button>
+    </section>
+
+    <section class="p-liste" id="aujourdhui" hidden>
+      <h2>Aujourd'hui</h2>
+      <div class="p-lignes" id="pointages"></div>
+    </section>
+
+    <section class="p-totaux">
+      <div><span>Cette semaine</span><b id="t-semaine">0h00</b></div>
+      <div><span id="t-mois-nom">Ce mois</span><b id="t-mois">0h00</b></div>
+    </section>
+
+    <section class="p-liste">
+      <div class="p-titre-ligne"><h2>Mes journées</h2><button id="ajouter" class="p-lien" type="button">+ Un oubli</button></div>
+      <div class="p-jours" id="jours"></div>
+    </section>
+
+    <button id="envoyer" class="p-gros bleu petit" type="button"><span>Envoyer mes pointages au patron</span></button>
+    <p class="p-note">Vos pointages restent sur ce téléphone jusqu'à ce que vous les envoyiez.</p>
+  </main>
+
+  <div id="voile" class="p-voile" hidden>
+    <div class="p-feuille" role="dialog" aria-modal="true">
+      <p class="p-feuille-titre" id="f-titre"></p>
+      <div id="f-corps"></div>
+      <div class="p-feuille-actions" id="f-actions"></div>
+    </div>
+  </div>
+  <div id="bandeau" class="p-bandeau" hidden></div>
+</body>
+</html>
