@@ -10,6 +10,7 @@ import { Icone, Avatar, couleurNom, Feuille, useStore } from "./ui-parts.js";
 import { toutesLesPages } from "./sheets.js";
 import { imprimer, partagerPDF } from "./impression.js";
 import { Zoom, LARGEUR_FEUILLE, HAUTEUR_FEUILLE } from "./zoom.js";
+import { usePager } from "./pager.js";
 
 const prenom = (n) => String(n).trim().split(/\s+/)[0];
 const classeAvatar = (i) => `a${i % 4}`;
@@ -153,61 +154,18 @@ export function Planning({ mois, page, onPage, onDelta, onPicker, onReglages, on
   useStore();
   const vend = vendeurs();
   const pager = useRef();
+  const piste = useRef();
   const p0 = useRef();
   const p1 = useRef();
+  const entete = useRef();
   const bilan = bilanPaiements(mois);
-
-  // Le conteneur prend la hauteur de la page affichée : chaque page garde sa propre taille
-  const ajuster = () => {
-    const el = pager.current;
-    const cible = (page === 1 ? p1 : p0).current;
-    if (el && cible) el.style.height = `${cible.offsetHeight}px`;
-  };
-  useLayoutEffect(ajuster);
-  useEffect(() => {
-    const ro = new ResizeObserver(ajuster);
-    if (p0.current) ro.observe(p0.current);
-    if (p1.current) ro.observe(p1.current);
-    return () => ro.disconnect();
-  }, [mois, page]);
+  // Balayage Planning ↔ Extras piloté par l'appli (voir pager.js) ; chaque page garde sa hauteur
+  usePager({ pager, piste, pages: [p0, p1], entete, page, onPage });
   // Retour en haut au changement de mois
   const defile = useRef();
   useEffect(() => {
     if (defile.current) defile.current.scrollTop = 0;
   }, [mois]);
-  // Balayage : on laisse le navigateur finir son glissement et son aimantation, puis on note la page.
-  // (Avant, la page changeait au milieu du geste et relançait un défilement programmé qui se battait
-  // avec celui du doigt : la colonne partait à gauche puis revenait.)
-  const pageRef = useRef(page);
-  pageRef.current = page;
-  const venantDuDoigt = useRef(false);
-  const attente = useRef();
-  const entete = useRef();
-  const surScroll = (e) => {
-    const el = e.currentTarget;
-    // En-tête (prénoms ↔ total des extras) en fondu qui suit le doigt, sans re-rendu
-    entete.current?.style.setProperty("--p", Math.min(1, Math.max(0, el.scrollLeft / el.clientWidth)).toFixed(3));
-    clearTimeout(attente.current);
-    attente.current = setTimeout(() => {
-      const w = el.clientWidth;
-      const n = Math.round(el.scrollLeft / w);
-      if (Math.abs(el.scrollLeft - n * w) > 2) return; // encore en mouvement : un autre évènement suivra
-      if (n !== pageRef.current) {
-        venantDuDoigt.current = true;
-        onPage(n);
-      }
-    }, 110);
-  };
-  useEffect(() => () => clearTimeout(attente.current), []);
-  // Page demandée par un bouton (onglet, « Aller les valider ») : défilement doux vers cette page
-  useEffect(() => {
-    if (venantDuDoigt.current) {
-      venantDuDoigt.current = false;
-      return;
-    }
-    const el = pager.current;
-    if (el && Math.abs(el.scrollLeft - page * el.clientWidth) > 2) el.scrollTo({ left: page * el.clientWidth, behavior: "smooth" });
-  }, [page]);
 
   return html`<div class="vue" style=${{ "--n": vend.length }}>
     <${Haut} mois=${mois} onDelta=${onDelta} onPicker=${onPicker} onReglages=${onReglages}
@@ -227,9 +185,11 @@ export function Planning({ mois, page, onPage, onDelta, onPicker, onReglages, on
         </div>
     </div>
     <div class="defile" ref=${defile}>
-      <div class="pager2" ref=${pager} onScroll=${surScroll}>
-        <div class="page-ref" ref=${p0}><${PagePlanning} mois=${mois} vend=${vend} onRenforts=${onRenforts} /></div>
-        <div class="page-ref" ref=${p1}><${PagePaiements} mois=${mois} onPaie=${onPaie} onNote=${onNote} /></div>
+      <div class="pager2" ref=${pager}>
+        <div class="piste" ref=${piste}>
+          <div class="page-ref" ref=${p0} aria-hidden=${page !== 0}><${PagePlanning} mois=${mois} vend=${vend} onRenforts=${onRenforts} /></div>
+          <div class="page-ref" ref=${p1} aria-hidden=${page !== 1}><${PagePaiements} mois=${mois} onPaie=${onPaie} onNote=${onNote} /></div>
+        </div>
       </div>
     </div>
   </div>`;

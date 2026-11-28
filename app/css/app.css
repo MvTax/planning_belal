@@ -617,3 +617,9 @@ html.pdf-mode .aurore { display: none !important; }
 .entete-pages .colonnes { opacity: calc(1 - var(--p) * 1.8); }
 .entete-pages .bilan-ligne { opacity: calc((var(--p) - .45) * 1.85); align-self: center; }
 .entete-pages > :not(.actif) { pointer-events: none; }
+
+/* Balayage piloté par l'appli : plus de défilement horizontal natif (ni aimantation, ni élastique) */
+.pager2 { overflow: hidden; scroll-snap-type: none; touch-action: pan-y; }
+.piste { display: flex; will-change: transform; }
+.piste .page-ref { flex: 0 0 100%; scroll-snap-align: none; }
+.entete-pages.anime .colonnes, .entete-pages.anime .bilan-ligne { transition: opacity .38s ease; }
