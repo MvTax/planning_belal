@@ -1,5 +1,7 @@
 # Fiches de présence
 
+> **V2 (refonte complète) : `/v2/`** — voir `v2/README.md`.
+
 Petite appli web (iPhone/Android) : **photo du planning → fiches de présence hebdomadaires remplies → impression**.
 
 Adresse une fois GitHub Pages activé : **https://mvtax.github.io/planning_belal/**
