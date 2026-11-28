@@ -4,7 +4,7 @@ Deux adresses seulement :
 
 | Adresse | Pour qui | Contenu |
 |---|---|---|
-| **https://mvtax.github.io/planning_belal/app/** | le patron | l'application (V2) : planning, extras payés, fiches à imprimer. Réglages limités à la taille du texte et au tarif des extras. |
+| **https://mvtax.github.io/planning_belal/app/** | le patron | l'application (V2) : planning, extras payés, fiches à imprimer. Réglages complets (équipe, horaires, repos, tarif, taille du texte), sans le bloc « Données » (reprise V1, remise à zéro, effacement). |
 | **https://mvtax.github.io/planning_belal/dev/** | le développeur (code demandé) | réglages complets (équipe, colonnes, horaires, repos), sauvegarde export/import, éditeur des données, diagnostic, anciennes versions (V1, V3). |
 
 La racine `/` et l'ancienne adresse `/v2/` renvoient automatiquement vers `/app/`.
