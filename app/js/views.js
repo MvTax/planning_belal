@@ -413,17 +413,17 @@ function Equipier({ e, i }) {
   </div>`;
 }
 
-// complet = false dans /app (le patron) : tout sauf le bloc « Données » (reprise V1, remise à zéro, effacement).
-// complet = true dans /dev : avec le bloc « Données ».
+// complet = false dans /app (le patron) : taille du texte + équipe de base.
+// complet = true dans /dev : en plus le tarif des extras et le bloc « Données » (reprise V1, remise à zéro, effacement).
 export function Reglages({ onClose, complet = false }) {
   useStore();
   const r = getReglages();
   return html`<${Feuille} titre="Réglages" sous="Tout reste sur ce téléphone" onClose=${onClose}>
     <div class="bloc"><p class="bloc-titre">Taille du texte</p>
       <div class="seg">${[["normal", 14], ["grand", 19], ["tres", 25]].map(([v, s]) => html`<button class=${r.taille === v ? "on" : ""} style=${{ fontSize: `${s}px` }} onClick=${() => modifierReglages((x) => (x.taille = v))}>A</button>`)}</div></div>
-    <div class="bloc"><p class="bloc-titre">Tarif des extras</p>
+    ${complet ? html`    <div class="bloc"><p class="bloc-titre">Tarif des extras</p>
       <label class="champ"><span>Tarif d'un extra par jour</span><input type="number" inputmode="numeric" min="0" step="5" value=${r.tarifExtra} onChange=${(ev) => modifierReglages((x) => (x.tarifExtra = Math.max(0, Number(ev.target.value) || 0)))} /><span style=${{ color: "var(--ink3)" }}>€</span></label>
-      <p class="petit-texte">C'est le montant proposé sur la page « Extras payés ». On peut le changer jour par jour (par exemple 60 €).</p></div>
+      <p class="petit-texte">C'est le montant proposé sur la page « Extras payés ». On peut le changer jour par jour (par exemple 60 €).</p></div>` : null}
     <p class="bloc-titre" style=${{ margin: "18px 6px 10px" }}>Équipe</p>
     ${r.employes.map((e, i) => html`<${Equipier} key=${i} e=${e} i=${i} />`)}
     <button class="ajout-equipier" onClick=${() => modifierReglages((x) => x.employes.push({ nom: "", boutique: x.employes[0]?.boutique || "", colonne: 0, actif: true, repos: [], horaires: structuredClone(HORAIRES_DEFAUT) }))}>+ Ajouter un salarié</button>

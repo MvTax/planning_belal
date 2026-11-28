@@ -201,7 +201,7 @@ function Dev() {
 
     <div class="bloc"><p class="bloc-titre">Réglages</p>
       <button class="btn-principal" onClick=${() => setReglages(true)}>Réglages complets</button>
-      <p class="petit-texte">Les mêmes réglages que dans /app, plus le bloc « Données » (reprise de la V1, remise à zéro, effacement), absent de /app.</p>
+      <p class="petit-texte">Les réglages de /app (taille du texte, équipe), plus le tarif des extras et le bloc « Données » (reprise de la V1, remise à zéro, effacement), absents de /app.</p>
     </div>
 
     <div class="bloc"><p class="bloc-titre">Sauvegarde</p>
