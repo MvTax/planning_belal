@@ -2,12 +2,158 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Planning</title>
-  <meta http-equiv="refresh" content="0; url=app/">
-  <script>location.replace("app/" + location.search + location.hash);</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Planning boutique</title>
+  <meta name="description" content="Planning du mois en quelques gestes, planning et fiches de présence prêts à imprimer.">
+  <meta name="theme-color" content="#f2f2f7">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="apple-mobile-web-app-title" content="Planning">
+  <link rel="stylesheet" href="styles.css?v=30">
+  <script type="module" src="app.js?v=30"></script>
 </head>
-<body style="background:#f5ecdc;font-family:-apple-system,sans-serif;text-align:center;padding-top:40vh">
-  <a href="app/" style="color:#7a4a2c;font-size:20px">Ouvrir le planning</a>
+<body class="en-planning">
+  <section id="vue-planning" class="no-print" aria-label="Planning du mois">
+    <div class="pl-tete">
+      <div class="pl-barre">
+        <h1 id="pl-titre"></h1>
+        <div class="pl-nav" role="group" aria-label="Changer de mois">
+          <button id="pl-prec" class="pl-btn" type="button" aria-label="Mois précédent"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button id="pl-suiv" class="pl-btn" type="button" aria-label="Mois suivant"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+        <button id="pl-reglages" class="pl-engrenage" type="button" aria-label="Réglages"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M10.6 2.5h2.8l.5 2.3c.5.2 1 .4 1.4.7l2.2-.8 1.4 2.4-1.7 1.6c.1.5.1 1 0 1.5l1.7 1.6-1.4 2.4-2.2-.8c-.4.3-.9.5-1.4.7l-.5 2.3h-2.8l-.5-2.3c-.5-.2-1-.4-1.4-.7l-2.2.8-1.4-2.4 1.7-1.6a5 5 0 0 1 0-1.5L5.1 7.1l1.4-2.4 2.2.8c.4-.3.9-.5 1.4-.7zM12 9.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6z" transform="translate(0 2.4) scale(1 .98)"/></svg></button>
+      </div>
+      <div class="pl-onglets" role="tablist" aria-label="Affichage">
+        <button type="button" role="tab" data-page="0" class="actif">Planning</button>
+        <button type="button" role="tab" data-page="1">Extras payés</button>
+      </div>
+      <div class="pl-entetes">
+        <div id="pl-cols" class="pl-cols"></div>
+        <div id="pl-cols-com" class="pl-cols-com"></div>
+      </div>
+    </div>
+    <div id="pl-pages" class="pl-pages">
+      <div id="pl-grille" class="pl-grille pl-page"></div>
+      <div id="pl-com" class="pl-grille pl-page"></div>
+    </div>
+    <div class="pl-pied">
+      <button id="pl-fiches" class="big-btn primary pl-gros" type="button">Voir mes fiches du mois</button>
+      <p class="pl-astuce">Appuyez sur une case, glissez sur le bon choix, relâchez.</p>
+    </div>
+  </section>
+
+  <div id="vue-fiches" hidden>
+    <header class="topbar no-print">
+      <h1>Fiches</h1>
+      <button id="btn-settings" class="icon-btn" type="button" aria-label="Réglages">
+        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M10.6 2.5h2.8l.5 2.3c.5.2 1 .4 1.4.7l2.2-.8 1.4 2.4-1.7 1.6c.1.5.1 1 0 1.5l1.7 1.6-1.4 2.4-2.2-.8c-.4.3-.9.5-1.4.7l-.5 2.3h-2.8l-.5-2.3c-.5-.2-1-.4-1.4-.7l-2.2.8-1.4-2.4 1.7-1.6a5 5 0 0 1 0-1.5L5.1 7.1l1.4-2.4 2.2.8c.4-.3.9-.5 1.4-.7zM12 9.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6z" transform="translate(0 2.4) scale(1 .98)"/></svg>
+      </button>
+    </header>
+
+    <main class="no-print">
+      <section class="card" id="fiches-resume">
+        <p class="fiches-mois" id="fiches-mois"></p>
+        <p class="hint" id="fiches-detail"></p>
+        <div id="fiches-alerte" class="fiches-alerte" hidden>
+          <span id="fiches-alerte-txt"></span>
+          <button type="button" id="fiches-valider">Aller les valider</button>
+        </div>
+        <div class="rangee-impression">
+          <button class="big-btn primary btn-imprimer" type="button"><span>Imprimer</span></button>
+          <button class="big-btn btn-pdf" type="button" aria-label="Obtenir en PDF"><span>PDF</span></button>
+        </div>
+        <p class="status statut-impression" role="status" aria-live="polite"></p>
+        <p class="small">Imprime le planning du mois, puis la fiche de chaque salarié. Le bouton « PDF » sert seulement à en garder une copie.</p>
+        <details class="aide-wifi">
+          <summary>Comment imprimer en Wi-Fi ?</summary>
+          <ol>
+            <li>Allumez l'imprimante et connectez-la au même Wi-Fi que le téléphone.</li>
+            <li>Appuyez sur <b>Imprimer</b> : la fenêtre d'impression s'ouvre.</li>
+            <li>Touchez <b>Imprimante</b> et choisissez la vôtre dans la liste.</li>
+            <li>Vérifiez le nombre de pages, puis appuyez sur <b>Imprimer</b> en haut à droite.</li>
+          </ol>
+          <p class="small">Il faut une imprimante compatible <b>AirPrint</b> (la plupart des imprimantes Wi-Fi récentes). La première fois, l'iPhone la repère tout seul.</p>
+        </details>
+      </section>
+    </main>
+
+    <div id="sheets" aria-label="Aperçu des pages"></div>
+
+    <main class="no-print fiches-bas">
+      <section class="card">
+        <div class="rangee-impression">
+          <button class="big-btn primary btn-imprimer" type="button"><span>Imprimer</span></button>
+          <button class="big-btn btn-pdf" type="button" aria-label="Obtenir en PDF"><span>PDF</span></button>
+        </div>
+        <p class="status statut-impression" role="status" aria-live="polite"></p>
+      </section>
+    </main>
+  </div>
+
+  <nav class="onglets no-print" aria-label="Navigation">
+    <button type="button" data-vue="planning" class="actif">
+      <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M7 2v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2zM5 9h14v11H5zm2 2v2h2v-2zm4 0v2h2v-2zm4 0v2h2v-2zm-8 4v2h2v-2zm4 0v2h2v-2z"/></svg>
+      <span>Planning</span>
+    </button>
+    <button type="button" data-vue="fiches">
+      <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2m8 1.5V8h4.5zM7 12v2h10v-2zm0 4v2h7v-2z"/></svg>
+      <span>Fiches</span>
+    </button>
+  </nav>
+
+  <dialog id="settings" class="no-print">
+    <form method="dialog" id="settings-form">
+      <header class="set-head">
+        <button value="cancel" type="submit" class="set-annuler">Annuler</button>
+        <h2>Réglages</h2>
+        <button value="save" type="submit" class="set-ok" id="s-save">OK</button>
+      </header>
+
+      <section class="groupe">
+        <h3 class="groupe-titre">Affichage</h3>
+        <div class="liste">
+          <div class="ligne ligne-col">
+            <span class="ligne-nom">Taille du texte</span>
+            <div class="taille-choix">
+              <label><input type="radio" name="taille" value="normal"><span style="font-size:14px">A</span></label>
+              <label><input type="radio" name="taille" value="grand"><span style="font-size:18px">A</span></label>
+              <label><input type="radio" name="taille" value="tres"><span style="font-size:23px">A</span></label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="groupe">
+        <h3 class="groupe-titre">Équipe</h3>
+        <div id="s-employes"></div>
+        <button type="button" id="s-add-emp" class="ligne-bouton">
+          <span class="plus">+</span> Ajouter un salarié
+        </button>
+        <p class="groupe-note">Seuls les salariés dont l'interrupteur est activé reçoivent une fiche. Sur le planning, « OK » reprend leurs horaires habituels.</p>
+      </section>
+
+      <section class="groupe">
+        <h3 class="groupe-titre">Extras</h3>
+        <div class="liste">
+          <label class="ligne"><span class="ligne-nom">Tarif d'un extra par jour</span>
+            <input type="number" id="s-tarif" inputmode="numeric" min="0" step="5" class="champ-euro" aria-label="Tarif d'un extra en euros">
+            <span class="euro">€</span>
+          </label>
+        </div>
+        <p class="groupe-note">Le tarif proposé sur la page « Extras payés ». On peut le changer jour par jour (par exemple 60 €).</p>
+      </section>
+
+      <section class="groupe">
+        <h3 class="groupe-titre">Données</h3>
+        <div class="liste">
+          <button type="button" id="s-exemple" class="ligne ligne-action">Remettre le planning de novembre 2026</button>
+          <button type="button" id="s-clear" class="ligne ligne-action rouge">Effacer tous les plannings</button>
+        </div>
+      </section>
+
+      <p class="version">Version 30</p>
+    </form>
+  </dialog>
 </body>
 </html>

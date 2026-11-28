@@ -29,7 +29,7 @@ export function imprimer(mois, repli) {
 
 async function genererPDF(mois, progression) {
   remplir(mois);
-  const { jsPDF, html2canvas } = await import(new URL("../../../vendor/pdf.js?v=30", import.meta.url).href);
+  const { jsPDF, html2canvas } = await import(new URL("../../vendor/pdf.js?v=30", import.meta.url).href);
   const feuilles = [...document.querySelectorAll("#print-root .sheet")];
   // html2canvas ne comprend pas les couleurs oklch de l'interface : pendant la création, la page est en couleurs simples
   document.documentElement.classList.add("pdf-mode");

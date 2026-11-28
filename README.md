@@ -1,25 +1,31 @@
-# Planning boutique
+# Fiches de présence
 
-Deux adresses seulement :
+> **V2 (refonte complète) : `/v2/`** — voir `v2/README.md`.
 
-| Adresse | Pour qui | Contenu |
-|---|---|---|
-| **https://mvtax.github.io/planning_belal/app/** | le patron | l'application (V2) : planning, extras payés, fiches à imprimer. Réglages limités à la taille du texte et au tarif des extras. |
-| **https://mvtax.github.io/planning_belal/dev/** | le développeur (code demandé) | réglages complets (équipe, colonnes, horaires, repos), sauvegarde export/import, éditeur des données, diagnostic, anciennes versions (V1, V3). |
+Petite appli web (iPhone/Android) : **photo du planning → fiches de présence hebdomadaires remplies → impression**.
 
-La racine `/` et l'ancienne adresse `/v2/` renvoient automatiquement vers `/app/`.
+Adresse une fois GitHub Pages activé : **https://mvtax.github.io/planning_belal/**
 
-## Données
-Pas de serveur : les données vivent dans le navigateur du téléphone (localStorage, clés `v2.*`).
-`/app` et `/dev` ouverts **sur le même téléphone** voient les mêmes données. Pour passer des données d'un
-téléphone à l'autre : `/dev` → **Exporter** (fichier `.json`), puis **Importer** sur l'autre téléphone.
+## Utilisation
 
-## Code de /dev
-Le code n'est pas écrit dans le site : seule son empreinte SHA-256 (`EMPREINTE` dans `dev/dev.js`, calculée sur
-`planning-dev:<code>`) y figure. Une fois saisi, le téléphone s'en souvient ; « Verrouiller » l'oublie.
-C'est un verrou côté navigateur, suffisant contre la curiosité, pas une vraie sécurité : le site est statique et public.
+1. Ouvrir le lien dans Safari, puis Partager → **Sur l'écran d'accueil**.
+2. Onglet **Planning** : le mois en entier, une ligne par jour, une colonne par vendeur et une colonne « Renforts ».
+   - **Changer une case** : poser le doigt sur la case, une roue de 6 choix s'ouvre ; glisser sur le bon choix et relâcher.
+   - **Renforts** : toucher la case de droite, cocher les prénoms.
+   - **Extras payés** (balayer vers la gauche) : montant calculé automatiquement (100 € par extra, modifiable), à valider jour par jour ; notes libres (acomptes, retards).
+   - Un nouveau mois est préparé tout seul : tout le monde « OK », sauf les repos habituels.
+3. Onglet **Fiches** → **Récupérer mes fiches** : un seul PDF avec le planning du mois (format de la feuille papier, A4 paysage) puis la fiche de présence de chaque salarié (A4 portrait). Dans la feuille de partage de l'iPhone, choisir **Imprimer**.
+
+Réglages (⚙︎) : taille du texte, salariés (colonne, horaires habituels, repos habituels, interrupteur « reçoit une fiche »), tarif d'un extra.
+
+## Notes
+
+- Aucune IA, aucun scan, aucune donnée envoyée : tout reste sur le téléphone (localStorage).
+- Les montants d'extras ne sont imprimés dans la colonne « Commentaires » que s'ils sont validés.
 
 ## Fichiers
-- `app/` : l'application du patron (voir `app/README.md`).
-- `dev/` : l'espace développeur (`dev.js`, `dev.css`), `dev/v1/` (V1), `dev/v3/` (V3 + `RECHERCHE.md`).
-- `vendor/pdf.js` : jsPDF + html2canvas, partagé par toutes les versions.
+
+- `index.html`, `styles.css` : l'interface.
+- `planning.js` : planning du mois (roue de choix, renforts, extras payés, notes).
+- `app.js` : réglages, fiches de présence, planning imprimé, PDF.
+- `vendor/pdf.js` : jsPDF + html2canvas (création du PDF).
