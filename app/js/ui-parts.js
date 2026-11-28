@@ -29,6 +29,7 @@ export function Feuille({ titre, sous, onClose, children }) {
     setTimeout(onClose, 260);
   };
   const debut = (e) => {
+    if (e.target.closest("button")) return; // la croix reste un vrai bouton (sinon la capture du pointeur lui vole le clic)
     g.current = { y: e.clientY, t: performance.now(), dy: 0 };
     e.currentTarget.setPointerCapture(e.pointerId);
     ref.current.style.animation = "none";

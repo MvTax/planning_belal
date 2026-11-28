@@ -426,10 +426,6 @@ export function Reglages({ onClose }) {
     ${r.employes.map((e, i) => html`<${Equipier} key=${i} e=${e} i=${i} />`)}
     <button class="ajout-equipier" onClick=${() => modifierReglages((x) => x.employes.push({ nom: "", boutique: x.employes[0]?.boutique || "", colonne: 0, actif: true, repos: [], horaires: structuredClone(HORAIRES_DEFAUT) }))}>+ Ajouter un salarié</button>
     <p class="petit-texte" style=${{ margin: "-4px 6px 16px" }}>L'interrupteur décide s'il reçoit une fiche. Sur le planning, « OK » reprend ses horaires habituels.</p>
-    <div class="bloc"><p class="bloc-titre">Données</p>
-      ${v1Disponible() ? html`<button class="btn-ligne" onClick=${() => { if (confirm("Reprendre les réglages et les plannings de la V1 ? Cela remplace ceux de la V2.")) { const n = importerV1(); toast(`${n} mois repris de la V1`); } }}>Reprendre les données de la V1</button>` : null}
-      <button class="btn-ligne" onClick=${() => confirm("Remettre le planning de novembre 2026 d'origine ?") && reinitialiserNovembre()}>Remettre le planning de novembre 2026</button>
-      <button class="btn-ligne danger" onClick=${() => confirm("Effacer tous les plannings enregistrés sur ce téléphone ?") && toutEffacer()}>Effacer tous les plannings</button></div>
-    <p class="version">Planning · V2</p>
+    <p class="version">Planning</p>
   <//>`;
 }
