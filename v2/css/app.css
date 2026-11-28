@@ -356,7 +356,7 @@ html.pdf-mode .aurore { display: none !important; }
   --ligne: oklch(.5 .05 60 / .12);
   --verre: oklch(.985 .014 80 / .78);
   --verre-fort: oklch(.99 .012 82 / .9);
-  --bord: oklch(1 .005 85 / .95);
+  --bord: oklch(1 0 0 / .95);
   --accent: oklch(.55 .085 52);
   --accent-2: oklch(.66 .09 62);
   --vert: oklch(.66 .09 150);
@@ -409,7 +409,7 @@ html.pdf-mode .aurore { display: none !important; }
 .avatar { box-shadow: 0 0 0 2px oklch(.99 .01 85), 0 5px 10px -4px var(--a2); font-family: var(--serif); font-weight: 600; }
 
 /* Tuiles : douces comme des étiquettes de papier */
-.tuile { border-radius: 20px; box-shadow: inset 0 1px 0 oklch(1 .01 85 / .85), inset 0 0 0 1px oklch(1 .01 85 / .45), 0 9px 16px -11px var(--cs); }
+.tuile { border-radius: 20px; box-shadow: inset 0 1px 0 oklch(1 0 0 / .85), inset 0 0 0 1px oklch(1 0 0 / .45), 0 9px 16px -11px var(--cs); }
 .tuile .lib { font-family: var(--sans); font-weight: 700; }
 .tuile.vide { background: oklch(.99 .012 82 / .5); border-color: oklch(.5 .05 60 / .25); }
 .s-travail { --c1: oklch(.955 .03 145); --c2: oklch(.915 .05 148); --cf: oklch(.4 .09 150); --cs: oklch(.55 .09 150 / .5); }
@@ -418,12 +418,12 @@ html.pdf-mode .aurore { display: none !important; }
 .s-ecole { --c1: oklch(.95 .025 320); --c2: oklch(.91 .045 325); --cf: oklch(.43 .08 330); --cs: oklch(.58 .07 325 / .45); }
 .s-maladie { --c1: oklch(.955 .025 230); --c2: oklch(.915 .045 235); --cf: oklch(.42 .07 240); --cs: oklch(.58 .07 235 / .45); }
 .s-absent { --c1: oklch(.42 .04 52); --c2: oklch(.31 .035 50); --cf: oklch(.96 .02 80); --cs: oklch(.3 .04 50 / .55); }
-.renforts { background: oklch(.99 .012 82 / .55); border-color: oklch(1 .01 85 / .85); }
+.renforts { background: oklch(.99 .012 82 / .55); border-color: oklch(1 0 0 / .85); }
 .pastille-paie { border-color: oklch(.99 .01 85); }
 .pastille-note { color: var(--accent); }
 
 /* Dock */
-.dock { background: oklch(.985 .016 80 / .9); border-color: oklch(1 .01 85 / .95); }
+.dock { background: oklch(.985 .016 80 / .9); border-color: oklch(1 0 0 / .95); }
 .dock .glisseur { background: oklch(.55 .085 52 / .13); }
 .dock button { font-family: var(--sans); font-weight: 600; }
 .dock .badge { background: var(--accent-2); }
@@ -448,7 +448,7 @@ html.pdf-mode .aurore { display: none !important; }
 .glisse { background: oklch(.985 .015 82 / .85); }
 .glisse.imprime { --g1: oklch(.7 .09 62); --g2: oklch(.52 .09 48); }
 .glisse.valide { --g1: oklch(.74 .09 150); --g2: oklch(.58 .09 152); }
-.glisse .poignee-g { background: oklch(.995 .008 85); }
+.glisse .poignee-g { background: oklch(.995 0 0); }
 
 /* Extras : carte caramel façon étiquette */
 .hero { background: linear-gradient(140deg, oklch(.62 .08 58), oklch(.48 .075 45)); box-shadow: 0 22px 38px -22px oklch(.4 .08 48 / .85); }
@@ -469,7 +469,7 @@ html.pdf-mode .aurore { display: none !important; }
 
 /* Réglages */
 .jours-rond button.on { background: linear-gradient(145deg, oklch(.68 .09 40), oklch(.55 .11 35)); box-shadow: 0 6px 12px -4px oklch(.55 .1 35 / .6); }
-.seg button.on { background: oklch(.995 .008 85); }
+.seg button.on { background: oklch(.995 0 0); }
 .mois-case { font-family: var(--serif); font-weight: 500; background: oklch(.992 .01 84); }
 .mois-case.on { background: linear-gradient(145deg, oklch(.66 .09 62), oklch(.52 .09 48)); }
 .annee-nav b { font-family: var(--main); font-weight: 400; font-size: calc(30px * var(--t)); color: var(--accent); }
@@ -486,3 +486,97 @@ html.pdf-mode .aurore { display: none !important; }
 .aurore i:nth-child(1) { background: oklch(.9 .035 62); }
 .aurore i:nth-child(2) { background: oklch(.925 .035 92); }
 .aurore i:nth-child(3) { background: oklch(.9 .03 45); }
+
+/* =====================================================================
+   STRUCTURE V1 : tout le mois à faire défiler, flèches pour changer de mois,
+   page « extras payés » à balayer, fiches avec boutons Imprimer haut et bas
+   ===================================================================== */
+.actions-haut { display: flex; align-items: center; gap: 8px; }
+.nav-mois { display: flex; align-items: stretch; height: 44px; border-radius: 22px; overflow: hidden; background: var(--verre-fort); border: 1px solid var(--bord); box-shadow: var(--ombre-1); }
+.nav-mois button { width: 46px; display: grid; place-items: center; color: var(--accent); position: relative; transition: background .15s; }
+.nav-mois button svg { width: 22px; height: 22px; stroke-width: 2.6; }
+.nav-mois button + button::before { content: ""; position: absolute; left: 0; top: 11px; bottom: 11px; width: 1px; background: var(--ligne); }
+.nav-mois button:active { background: oklch(.55 .085 52 / .14); }
+
+.onglets-pl { display: flex; padding: 3px; margin: 10px 0 0; border-radius: 15px; background: oklch(.4 .05 55 / .08); gap: 2px; }
+.onglets-pl button { flex: 1; padding: 10px 0; border-radius: 12px; font-weight: 700; font-size: calc(14.5px * var(--t)); color: var(--ink2); transition: all .3s var(--ressort); display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+.onglets-pl button.on { background: oklch(.995 0 0); color: var(--ink); box-shadow: 0 2px 7px oklch(.4 .05 55 / .16); }
+.onglets-pl i { font-style: normal; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--accent-2); color: #fff; font-size: 11.5px; font-weight: 800; display: grid; place-items: center; }
+.colonnes { padding: 8px 22px 6px; }
+.bilan-ligne { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 22px 8px; min-height: 52px; }
+.bilan-txt { font-size: calc(15px * var(--t)); color: var(--ink2); }
+.bilan-txt b { color: var(--ink); font-weight: 800; }
+.bilan-txt .att b { color: oklch(.55 .12 62); }
+.tout-valider { font-family: var(--main); font-size: calc(19px * var(--t)); color: var(--accent); padding: 6px 4px; }
+
+.defile { padding: 4px 16px calc(var(--bas) + 104px); }
+.pager2 { display: flex; overflow-x: auto; overflow-y: clip; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; }
+.pager2::-webkit-scrollbar { display: none; }
+.page-ref { flex: 0 0 100%; width: 100%; min-width: 0; align-self: flex-start; scroll-snap-align: start; scroll-snap-stop: always; }
+.carte-sem { background: oklch(.992 .01 84); border-radius: 22px; padding: 2px 6px; margin-bottom: 12px; box-shadow: var(--ombre-1); border: 1px solid var(--ligne); overflow: hidden; }
+.carte-sem .ligne-j { min-height: calc(64px * var(--t)); padding: 5px 0; box-shadow: inset 0 -1px 0 var(--ligne); }
+.carte-sem .ligne-j:last-child { box-shadow: none; }
+.carte-sem .ligne-j.we::before { inset: 0 -6px; border-radius: 0; }
+.carte-sem .jj { min-height: 0; }
+.carte-sem .tuile { min-height: calc(52px * var(--t)); }
+.carte-sem .renforts { min-height: calc(52px * var(--t)); }
+.ligne-c { position: relative; isolation: isolate; display: grid; grid-template-columns: calc(48px * var(--t)) minmax(0, 1fr); gap: 8px; padding: 6px 0; box-shadow: inset 0 -1px 0 var(--ligne); align-items: center; min-height: calc(64px * var(--t)); }
+.ligne-c:last-child { box-shadow: none; }
+.ligne-c.we::before { content: ""; position: absolute; inset: 0 -6px; z-index: -1; background: linear-gradient(90deg, oklch(.93 .045 88 / .6), oklch(.94 .04 88 / .25)); }
+.cell-c { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+
+.paie-chip { display: flex; align-items: stretch; border-radius: 18px; overflow: hidden; }
+.paie-chip.attente { background: oklch(.96 .05 88); box-shadow: inset 0 0 0 1.5px oklch(.78 .1 78 / .55); }
+.paie-chip.ok { background: oklch(.95 .035 148); }
+.paie-corps { flex: 1; min-width: 0; padding: 8px 12px; text-align: left; display: flex; flex-direction: column; gap: 1px; }
+.paie-corps:active { background: oklch(.4 .05 55 / .06); }
+.paie-calc { font-size: calc(17px * var(--t)); font-weight: 700; letter-spacing: -.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.paie-calc b { font-weight: 850; }
+.paie-chip.ok .paie-calc { color: oklch(.4 .09 150); }
+.paie-qui { font-size: calc(12.5px * var(--t)); color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.paie-chip.attente .paie-qui { color: oklch(.5 .09 65); }
+.paie-valider, .paie-coche { flex: none; width: calc(58px * var(--t)); display: grid; place-items: center; }
+.paie-valider svg, .paie-coche svg { width: 32px; height: 32px; padding: 7px; border-radius: 50%; stroke-width: 3; }
+.paie-valider svg { color: oklch(.62 .12 68); border: 2px solid oklch(.7 .12 72); padding: 5px; }
+.paie-valider:active svg { background: oklch(.7 .12 72 / .22); }
+.paie-coche svg { background: var(--vert); color: #fff; }
+.note-ligne { display: flex; align-items: center; gap: 7px; width: 100%; min-height: 32px; padding: 4px 10px; border-radius: 10px; color: var(--ink3); font-size: calc(14px * var(--t)); text-align: left; }
+.note-ligne:active { background: oklch(.4 .05 55 / .08); }
+.note-ligne i { font-style: normal; width: 20px; height: 20px; border-radius: 50%; background: oklch(.4 .05 55 / .1); color: var(--ink2); display: grid; place-items: center; font-size: 15px; padding-bottom: 1px; }
+.note-ligne.pleine { background: oklch(.95 .05 90); color: oklch(.38 .06 65); align-items: flex-start; padding: 7px 10px; font-family: var(--main); font-size: calc(17px * var(--t)); line-height: 1.2; box-shadow: inset 0 0 0 1px oklch(.7 .06 80 / .25); }
+.note-ligne.pleine svg { flex: none; width: 15px; height: 15px; margin-top: 2px; color: oklch(.55 .1 70); }
+.note-ligne.pleine span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+
+.btn-principal { display: block; width: 100%; min-height: 56px; margin-top: 8px; border-radius: 19px; background: linear-gradient(145deg, oklch(.64 .09 62), oklch(.5 .09 48)); color: #fff; font-size: calc(17.5px * var(--t)); font-weight: 750; letter-spacing: -.01em; box-shadow: 0 14px 24px -14px oklch(.45 .09 48 / .9); transition: transform .12s var(--ressort); }
+.btn-principal:active { transform: scale(.98); }
+.btn-principal.vert { background: linear-gradient(145deg, oklch(.72 .09 150), oklch(.57 .09 152)); box-shadow: 0 14px 24px -14px oklch(.45 .09 150 / .9); }
+.btn-secondaire { display: block; width: 100%; min-height: 52px; margin-top: 8px; border-radius: 17px; background: oklch(.55 .085 52 / .1); color: var(--accent); font-size: calc(16px * var(--t)); font-weight: 700; }
+.champ-prenom { border: 0; background: oklch(.4 .05 55 / .07); border-radius: 10px; padding: 6px 10px; width: 130px; font-size: calc(15.5px * var(--t)); outline: none; }
+
+/* Fiches */
+.carte-fiches { padding: 18px; }
+.fiches-mois { margin: 0 0 2px; font-family: var(--serif); font-size: calc(28px * var(--t)); font-weight: 400; letter-spacing: .03em; text-transform: uppercase; }
+.alerte { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin: 0 0 12px; padding: 12px 14px; border-radius: 16px; background: oklch(.95 .06 85); color: oklch(.42 .08 65); font-size: calc(14.5px * var(--t)); font-weight: 600; line-height: 1.3; }
+.alerte button { color: var(--accent); font-weight: 750; padding: 2px 0; font-family: var(--main); font-size: calc(18px * var(--t)); }
+.rangee-imp { display: flex; gap: 10px; align-items: stretch; }
+.btn-imprimer { flex: 1; min-height: 64px; border-radius: 21px; background: linear-gradient(145deg, oklch(.64 .09 62), oklch(.5 .09 48)); color: #fff; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: calc(19px * var(--t)); font-weight: 750; box-shadow: 0 16px 26px -16px oklch(.42 .09 48 / .95); transition: transform .12s var(--ressort); }
+.btn-imprimer:active { transform: scale(.98); }
+.btn-imprimer svg { width: 26px; height: 26px; }
+.btn-pdf { flex: none; min-width: 92px; padding: 0 14px; border-radius: 21px; background: oklch(.55 .085 52 / .11); color: var(--accent); display: flex; align-items: center; justify-content: center; gap: 7px; font-size: calc(15.5px * var(--t)); font-weight: 750; }
+.btn-pdf svg { width: 20px; height: 20px; }
+.im-statut { min-height: 18px; margin: 10px 0 0; font-size: calc(13.5px * var(--t)); color: var(--ink2); }
+.aide { border-top: 1px solid var(--ligne); margin-top: 8px; padding-top: 8px; }
+.aide summary { color: var(--accent); font-weight: 650; font-size: calc(15px * var(--t)); padding: 4px 0; cursor: pointer; }
+.aide ol { margin: 8px 0 8px 20px; padding: 0; color: var(--ink2); font-size: calc(14.5px * var(--t)); line-height: 1.5; }
+.apercu { padding: 4px 0 8px; }
+.page-etiquette { font-family: var(--main); font-size: calc(18px * var(--t)); color: var(--accent); margin: 14px 4px 6px; }
+.papier-page { position: relative; background: #fff; border-radius: 4px; overflow: hidden; box-shadow: 0 2px 4px oklch(.4 .05 55 / .1), 0 18px 30px -16px oklch(.38 .07 52 / .4); }
+
+.dock button { width: calc(110px * var(--t)); }
+.dock .glisseur { width: calc(110px * var(--t)); }
+.dock .badge { right: calc(50% - 38px); }
+/* Petits écrans + très grand texte : tout reste dans la largeur */
+.titre-mois { min-width: 0; flex: 1; }
+.titre-mois .nom { font-size: min(calc(34px * var(--t)), 8.6vw); }
+.tuile .lib { font-size: min(calc(13.5px * var(--t)), 3.3vw); }
+@media (max-width: 380px) { .nav-mois button { width: 38px; } .nav-mois, .rond { height: 40px; } .rond { width: 40px; } }

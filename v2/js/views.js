@@ -1,21 +1,19 @@
-// Écrans : planning (semaines à balayer), extras payés, impression, réglages
+// Écrans : planning du mois (+ page « extras payés » à balayer), fiches à imprimer, réglages
 import { html, useState, useEffect, useRef, useMemo, useLayoutEffect } from "../vendor/ui.js";
 import {
-  STATUTS, STATUT, vendeurs, mois as lireMois, lireJour, getReglages, modifierReglages, definirStatut, definirRenforts, definirTarif, definirTarifs, definirNote,
+  STATUT, vendeurs, mois as lireMois, lireJour, getReglages, modifierReglages, definirRenforts, definirTarif, definirTarifs, definirNote,
   estValide, totalJour, tarifDe, libelleTarifs, validerPaiement, validerTout, bilanPaiements, ajouterExtraConnu, HORAIRES_DEFAUT, v1Disponible, importerV1,
   reinitialiserNovembre, toutEffacer, rev,
 } from "./store.js";
-import {
-  JOURS, JC, MOIS, MOIS_COURTS, iso, fromISO, addDays, dayIndex, moisDeSemaine, semainesAutour, joursDuMois, estFerie, aujourdhui, mondayOf, moisDe, nomMois, decalerMois, cap,
-} from "./dates.js";
-import { Icone, Avatar, couleurNom, Feuille, Glisse, useStore } from "./ui-parts.js";
+import { JOURS, JC, MOIS, MOIS_COURTS, iso, fromISO, dayIndex, joursDuMois, estFerie, aujourdhui, nomMois, cap } from "./dates.js";
+import { Icone, Avatar, couleurNom, Feuille, useStore } from "./ui-parts.js";
 import { toutesLesPages } from "./sheets.js";
 import { imprimer, partagerPDF } from "./impression.js";
 
 const prenom = (n) => String(n).trim().split(/\s+/)[0];
 const classeAvatar = (i) => `a${i % 4}`;
 
-// ---------- Notifications (toast) ----------
+// ---------- Notifications ----------
 let afficherToast = () => {};
 export const toast = (msg, annuler) => afficherToast({ msg, annuler, id: Math.random() });
 export function ToastHote() {
@@ -30,23 +28,31 @@ export function ToastHote() {
   return html`<div class="toast" key=${t.id}><span>${t.msg}</span>${t.annuler ? html`<button onClick=${() => { t.annuler(); setT(null); }}>Annuler</button>` : null}</div>`;
 }
 
-// ---------- En-tête ----------
-export function Haut({ mois, onMois, onReglages, enfants }) {
+// ---------- En-tête : mois à gauche, flèches et réglages à droite ----------
+export function Haut({ mois, onDelta, onPicker, onReglages, enfants }) {
   const { nom, annee } = nomMois(mois);
   return html`<header class="haut">
     <div class="haut-ligne">
-      <button class="titre-mois" onClick=${onMois} aria-label="Choisir un mois">
+      <button class="titre-mois" onClick=${onPicker} aria-label="Choisir un mois">
         <span class="annee">${annee}</span>
-        <span class="nom" key=${mois}>${nom}<${Icone} n="bas" /></span>
+        <span class="nom" key=${mois}>${nom}</span>
       </button>
-      <button class="rond" onClick=${onReglages} aria-label="Réglages"><${Icone} n="reglages" /></button>
+      <div class="actions-haut">
+        ${onDelta
+          ? html`<div class="nav-mois" role="group" aria-label="Changer de mois">
+              <button onClick=${() => onDelta(-1)} aria-label="Mois précédent"><${Icone} n="gauche" /></button>
+              <button onClick=${() => onDelta(1)} aria-label="Mois suivant"><${Icone} n="droite" /></button>
+            </div>`
+          : null}
+        <button class="rond" onClick=${onReglages} aria-label="Réglages"><${Icone} n="reglages" /></button>
+      </div>
     </div>
     ${enfants}
   </header>`;
 }
 
-// ---------- Planning : une semaine par page, balayage horizontal ----------
-function Tuile({ date, v, statut, nom }) {
+// ---------- Planning : tout le mois, une carte par semaine ----------
+function Tuile({ date, v, statut }) {
   const prec = useRef(statut);
   const [vue, setVue] = useState(false);
   useEffect(() => {
@@ -63,328 +69,309 @@ function Tuile({ date, v, statut, nom }) {
   </button>`;
 }
 
-function Renforts({ date, j }) {
+function CelluleJour({ d, k, i }) {
+  const we = i >= 5;
+  return html`<div class=${`jj ${we ? "we" : ""} ${k === aujourdhui() ? "auj" : ""}`}>
+    ${estFerie(d) ? html`<span class="ferie">Férié</span>` : null}
+    <span class="nom-j">${JC[i]}</span><span class="num">${d.getDate()}</span>
+  </div>`;
+}
+
+function Renforts({ date, j, onRenforts }) {
   const ex = j.extras || [];
-  const ok = ex.length && estValide(j);
-  return html`<button class="renforts" data-date=${date} onClick=${() => Planning.ouvrirJour(date, "renforts")} aria-label=${`Renforts du ${date}`}>
+  return html`<button class="renforts" onClick=${() => onRenforts(date)} aria-label=${`Renforts du ${date}`}>
     ${ex.length
       ? html`<div class="pile">${ex.slice(0, 3).map((n) => html`<${Avatar} nom=${n} c=${couleurNom(n)} petit />`)}</div>${ex.length > 3 ? html`<span class="plus">+${ex.length - 3}</span>` : null}`
       : html`<span class="ajout"><${Icone} n="plus" /></span>`}
-    ${ex.length ? html`<i class=${`pastille-paie ${ok ? "ok" : "attente"}`}></i>` : null}
-    ${j.note ? html`<${Icone} n="note" cls="pastille-note" />` : null}
   </button>`;
 }
 
-function Semaine({ lundi, vend }) {
-  const auj = aujourdhui();
-  return html`<div class="page">
-    ${Array.from({ length: 7 }, (_, i) => {
-      const d = addDays(lundi, i), k = iso(d), j = lireJour(k);
-      lireMois(k.slice(0, 7));
-      const we = i >= 5;
-      return html`<div class=${`ligne-j ${we ? "we" : ""}`}>
-        <button class=${`jj ${we ? "we" : ""} ${k === auj ? "auj" : ""}`} onClick=${() => Planning.ouvrirJour(k)} aria-label=${`Jour ${k}`}>
-          ${estFerie(d) ? html`<span class="ferie">Férié</span>` : null}
-          <span class="nom-j">${JC[i]}</span><span class="num">${d.getDate()}</span>
-        </button>
-        ${vend.map((v) => html`<${Tuile} date=${k} v=${v} statut=${j[v.colonne]} />`)}
-        <${Renforts} date=${k} j=${j} />
-      </div>`;
-    })}
+const semainesDuMois = (m) => {
+  const res = [];
+  for (const d of joursDuMois(m)) {
+    if (dayIndex(d) === 0 || !res.length) res.push([]);
+    res.at(-1).push(d);
+  }
+  return res;
+};
+
+function PagePlanning({ mois, vend, onRenforts }) {
+  const data = lireMois(mois);
+  return html`<div class="page2" id="page-planning">
+    ${semainesDuMois(mois).map(
+      (sem) => html`<section class="carte-sem">${sem.map((d) => {
+        const k = iso(d), j = data.jours[k] || {}, i = dayIndex(d);
+        return html`<div class=${`ligne-j ${i >= 5 ? "we" : ""}`} key=${k}>
+          <${CelluleJour} d=${d} k=${k} i=${i} />
+          ${vend.map((v) => html`<${Tuile} date=${k} v=${v} statut=${j[v.colonne]} />`)}
+          <${Renforts} date=${k} j=${j} onRenforts=${onRenforts} />
+        </div>`;
+      })}</section>`,
+    )}
   </div>`;
 }
 
-export function Planning({ ancre, onMois, onActif, onReglages, onPicker, onJour }) {
+// ---------- Page « extras payés » (commentaires) ----------
+function LigneNote({ date, note, onNote }) {
+  return note
+    ? html`<button class="note-ligne pleine" onClick=${() => onNote(date)}><${Icone} n="note" /><span>${note}</span></button>`
+    : html`<button class="note-ligne" onClick=${() => onNote(date)}><i>+</i> Note</button>`;
+}
+
+function PagePaiements({ mois, onPaie, onNote }) {
+  const data = lireMois(mois);
+  return html`<div class="page2" id="page-paiements">
+    ${semainesDuMois(mois).map(
+      (sem) => html`<section class="carte-sem">${sem.map((d) => {
+        const k = iso(d), j = data.jours[k] || {}, i = dayIndex(d);
+        const ex = j.extras || [];
+        const ok = ex.length && estValide(j);
+        return html`<div class=${`ligne-c ${i >= 5 ? "we" : ""}`} key=${k}>
+          <${CelluleJour} d=${d} k=${k} i=${i} />
+          <div class="cell-c">
+            ${ex.length
+              ? html`<div class=${`paie-chip ${ok ? "ok" : "attente"}`}>
+                  <button class="paie-corps" onClick=${() => onPaie(k)}>
+                    <span class="paie-calc">${libelleTarifs(j)} <b>= ${totalJour(j)} €</b></span>
+                    <span class="paie-qui">${ex.map(prenom).join(", ")}${ok ? "" : " · à valider"}</span>
+                  </button>
+                  ${ok
+                    ? html`<span class="paie-coche"><${Icone} n="travail" /></span>`
+                    : html`<button class="paie-valider" aria-label="Valider ce paiement" onClick=${() => { const a = validerPaiement(k, true); toast(`Paiement du ${d.getDate()} validé`, a); }}><${Icone} n="travail" /></button>`}
+                </div>`
+              : null}
+            <${LigneNote} date=${k} note=${(j.note || "").trim()} onNote=${onNote} />
+          </div>
+        </div>`;
+      })}</section>`,
+    )}
+  </div>`;
+}
+
+export function Planning({ mois, page, onPage, onDelta, onPicker, onReglages, onRenforts, onPaie, onNote }) {
   useStore();
-  Planning.ouvrirJour = onJour;
   const vend = vendeurs();
-  const semaines = useMemo(() => semainesAutour(ancre, 8, 8), [ancre]);
   const pager = useRef();
-  const [idx, setIdx] = useState(-1);
-  const indexDe = (m) => {
-    const auj = mondayOf(new Date());
-    if (m === moisDe(new Date())) return semaines.findIndex((l) => iso(l) === iso(auj));
-    return semaines.findIndex((l) => moisDeSemaine(l) === m);
-  };
-  useLayoutEffect(() => {
+  const p0 = useRef();
+  const p1 = useRef();
+  const bilan = bilanPaiements(mois);
+
+  // Le conteneur prend la hauteur de la page affichée : chaque page garde sa propre taille
+  const ajuster = () => {
     const el = pager.current;
-    const cible = Math.max(0, indexDe(ancre));
-    el.style.scrollSnapType = "none";
-    el.scrollLeft = cible * el.clientWidth;
-    el.style.scrollSnapType = "";
-    setIdx(cible);
-  }, [ancre]);
-  const moisActif = idx >= 0 ? moisDeSemaine(semaines[idx]) : ancre;
+    const cible = (page === 1 ? p1 : p0).current;
+    if (el && cible) el.style.height = `${cible.offsetHeight}px`;
+  };
+  useLayoutEffect(ajuster);
   useEffect(() => {
-    onActif(moisActif);
-  }, [moisActif]);
+    const ro = new ResizeObserver(ajuster);
+    if (p0.current) ro.observe(p0.current);
+    if (p1.current) ro.observe(p1.current);
+    return () => ro.disconnect();
+  }, [mois, page]);
+  // Retour en haut au changement de mois
+  const defile = useRef();
+  useEffect(() => {
+    if (defile.current) defile.current.scrollTop = 0;
+  }, [mois]);
+  // Page demandée par l'application (ex. « Aller les valider »)
+  useEffect(() => {
+    const el = pager.current;
+    if (el && Math.round(el.scrollLeft / el.clientWidth) !== page) el.scrollTo({ left: page * el.clientWidth, behavior: "smooth" });
+  }, [page]);
   const surScroll = (e) => {
     const el = e.currentTarget;
-    const i = Math.round(el.scrollLeft / el.clientWidth);
-    if (i !== idx && i >= 0) setIdx(i);
+    const n = el.scrollLeft > el.clientWidth / 2 ? 1 : 0;
+    if (n !== page) onPage(n);
   };
-  const aller = (i) => pager.current.scrollTo({ left: i * pager.current.clientWidth, behavior: "smooth" });
-  const lundiActif = semaines[Math.max(0, idx)];
-  const dimanche = addDays(lundiActif, 6);
-  const libelle = lundiActif.getMonth() === dimanche.getMonth()
-    ? `${lundiActif.getDate()} – ${dimanche.getDate()} ${MOIS[dimanche.getMonth()]}`
-    : `${lundiActif.getDate()} ${MOIS_COURTS[lundiActif.getMonth()]} – ${dimanche.getDate()} ${MOIS_COURTS[dimanche.getMonth()]}`;
-  const indicesMois = semaines.map((l, i) => (moisDeSemaine(l) === moisActif ? i : -1)).filter((i) => i >= 0);
-  const iAuj = indexDe(moisDe(new Date()));
-  const loin = iAuj >= 0 ? idx !== iAuj : true;
 
   return html`<div class="vue" style=${{ "--n": vend.length }}>
-    <${Haut} mois=${moisActif} onMois=${onPicker} onReglages=${onReglages}
-      enfants=${html`<div class="semaine-ligne">
-        <span class="semaine-nom">${libelle}</span>
-        ${loin
-          ? html`<button class="aujourdhui" onClick=${() => (iAuj >= 0 && moisDe(new Date()) === ancre ? aller(iAuj) : onMois(moisDe(new Date())))}>Aujourd'hui</button>`
-          : html`<div class="points">${indicesMois.map((i) => html`<button class=${`point ${i === idx ? "actif" : ""}`} onClick=${() => aller(i)} aria-label="Semaine"></button>`)}</div>`}
+    <${Haut} mois=${mois} onDelta=${onDelta} onPicker=${onPicker} onReglages=${onReglages}
+      enfants=${html`<div class="onglets-pl" role="tablist">
+        <button class=${page === 0 ? "on" : ""} onClick=${() => onPage(0)}>Planning</button>
+        <button class=${page === 1 ? "on" : ""} onClick=${() => onPage(1)}>Extras payés${bilan.aValider ? html`<i>${bilan.aValider}</i>` : null}</button>
       </div>`} />
-    <div class="colonnes">
-      <span></span>
-      ${vend.map((v, i) => html`<div class="col-tete"><${Avatar} nom=${v.nom} c=${classeAvatar(i)} /><span>${prenom(v.nom)}</span></div>`)}
-      <div class="col-tete extras"><span>Renforts</span></div>
-    </div>
-    <div class="pager" ref=${pager} onScroll=${surScroll}>
-      ${semaines.map((l, i) => (Math.abs(i - idx) <= 1 ? html`<${Semaine} key=${iso(l)} lundi=${l} vend=${vend} />` : html`<div class="page" key=${iso(l)}></div>`))}
+    ${page === 0
+      ? html`<div class="colonnes">
+          <span></span>
+          ${vend.map((v, i) => html`<div class="col-tete"><${Avatar} nom=${v.nom} c=${classeAvatar(i)} /><span>${prenom(v.nom)}</span></div>`)}
+          <div class="col-tete extras"><span>Renforts</span></div>
+        </div>`
+      : html`<div class="bilan-ligne">
+          <div class="bilan-txt"><b>${bilan.ok} €</b> validés${bilan.attente ? html` · <span class="att"><b>${bilan.attente} €</b> à valider</span>` : null}</div>
+          ${bilan.aValider ? html`<button class="tout-valider" onClick=${() => { const a = validerTout(mois); toast(`${bilan.aValider} jour${bilan.aValider > 1 ? "s" : ""} validé${bilan.aValider > 1 ? "s" : ""}`, a); }}>Tout valider</button>` : null}
+        </div>`}
+    <div class="defile" ref=${defile}>
+      <div class="pager2" ref=${pager} onScroll=${surScroll}>
+        <div class="page-ref" ref=${p0}><${PagePlanning} mois=${mois} vend=${vend} onRenforts=${onRenforts} /></div>
+        <div class="page-ref" ref=${p1}><${PagePaiements} mois=${mois} onPaie=${onPaie} onNote=${onNote} /></div>
+      </div>
     </div>
   </div>`;
 }
 
-// ---------- Feuille d'un jour : renforts, paiement, note ----------
-export function FeuilleJour({ date, onClose }) {
+// ---------- Feuille des renforts : uniquement les prénoms à choisir ----------
+export function FeuilleRenforts({ date, onClose }) {
   useStore();
   const j = lireJour(date);
   const d = fromISO(date);
   const ex = j.extras || [];
   const reg = getReglages();
   const [nouveau, setNouveau] = useState(null);
-  const tous = [...new Set([...reg.extras, ...ex])];
+  const tous = [...new Set([...reg.extras, ...vendeurs().map((v) => prenom(v.nom)), ...ex])];
   const bascule = (n) => {
-    const liste = ex.includes(n) ? ex.filter((x) => x !== n) : [...ex, n];
-    const annuler = definirRenforts(date, liste);
+    const annuler = definirRenforts(date, ex.includes(n) ? ex.filter((x) => x !== n) : [...ex, n]);
     toast(`${n} ${ex.includes(n) ? "retiré(e)" : "ajouté(e)"} le ${d.getDate()}`, annuler);
   };
   const ajouter = () => {
     const n = (nouveau || "").trim();
     if (n) {
       ajouterExtraConnu(n);
-      definirRenforts(date, [...ex, n]);
+      definirRenforts(date, [...ex.filter((x) => x !== n), n]);
     }
     setNouveau(null);
   };
-  const ok = ex.length && estValide(j);
-  const idees = ["Acompte 100 €", "Acompte 50 €", "Retard", "Absent prévenu", "Extra payé 60 €"];
-  const [note, setNote] = useState(j.note || "");
-  const enregistrerNote = () => {
-    if ((j.note || "") !== note.trim()) definirNote(date, note);
-  };
-  return html`<${Feuille} titre=${`${JOURS[dayIndex(d)]} ${d.getDate()}`} sous=${`${cap(MOIS[d.getMonth()])} ${d.getFullYear()}${estFerie(d) ? " · jour férié" : ""}`} onClose=${() => { enregistrerNote(); onClose(); }}>
+  return html`<${Feuille} titre=${`Renforts du ${JOURS[dayIndex(d)].toLowerCase()} ${d.getDate()}`} sous=${`${cap(MOIS[d.getMonth()])} ${d.getFullYear()}`} onClose=${onClose}>
     <div class="bloc">
-      <p class="bloc-titre">Renforts du jour</p>
       <div class="puces">
         ${tous.map((n) => html`<button class=${`puce ${ex.includes(n) ? "on" : ""}`} onClick=${() => bascule(n)}><${Avatar} nom=${n} c=${couleurNom(n)} petit />${n}</button>`)}
         ${nouveau === null
           ? html`<button class="puce nouveau" onClick=${() => setNouveau("")}>+ Autre prénom</button>`
-          : html`<span class="puce" style=${{ paddingLeft: "14px" }}><input autofocus class="note-champ" style=${{ padding: "4px 8px", width: "130px", borderRadius: "10px" }} placeholder="Prénom" value=${nouveau} onInput=${(e) => setNouveau(e.target.value)} onKeyDown=${(e) => e.key === "Enter" && ajouter()} /><button onClick=${ajouter} style=${{ color: "var(--accent)", fontWeight: 800 }}>OK</button></span>`}
+          : html`<span class="puce" style=${{ paddingLeft: "14px" }}><input autofocus class="champ-prenom" placeholder="Prénom" value=${nouveau} onInput=${(e) => setNouveau(e.target.value)} onKeyDown=${(e) => e.key === "Enter" && ajouter()} /><button onClick=${ajouter} style=${{ color: "var(--accent)", fontWeight: 800 }}>OK</button></span>`}
       </div>
     </div>
-    ${ex.length
-      ? html`<div class="bloc">
-          <p class="bloc-titre">Paiement des extras</p>
-          <div class="rapides"><button onClick=${() => definirTarifs(date, reg.tarifExtra)}>Tout à ${reg.tarifExtra} €</button><button onClick=${() => definirTarifs(date, 60)}>Tout à 60 €</button></div>
-          ${ex.map((n) => html`<div class="ligne-paie"><${Avatar} nom=${n} c=${couleurNom(n)} petit /><span class="qui">${n}</span>
-            <button class="pas" onClick=${() => definirTarif(date, n, tarifDe(j, n) - 10)} aria-label="Moins 10 euros">−</button>
-            <span class="montant">${tarifDe(j, n)} €</span>
-            <button class="pas" onClick=${() => definirTarif(date, n, tarifDe(j, n) + 10)} aria-label="Plus 10 euros">+</button></div>`)}
-          <div class="total-ligne"><span>Total du jour</span><b>${totalJour(j)} €</b></div>
-          ${ok
-            ? html`<div class="verif" style=${{ marginTop: "12px", justifyContent: "space-between", width: "100%" }}><span style=${{ display: "inline-flex", gap: "8px", alignItems: "center" }}><i><${Icone} n="travail" /></i>Paiement validé</span><button style=${{ color: "var(--accent)", fontWeight: 750 }} onClick=${() => validerPaiement(date, false)}>Remettre à valider</button></div>`
-            : html`<${Glisse} texte="Glisser pour valider" icone="fleche" type="valide" onDone=${() => { const a = validerPaiement(date, true); toast(`Paiement du ${d.getDate()} validé`, a); }} relache=${900} />`}
-        </div>`
-      : null}
-    <div class="bloc">
-      <p class="bloc-titre">Commentaire du jour</p>
-      <div class="idees">${idees.map((t) => html`<button onClick=${() => setNote(note.trim() ? `${note.trim()} · ${t}` : t)}>${t}</button>`)}</div>
-      <textarea class="note-champ" rows="3" placeholder="Acompte, retard, remarque…" value=${note} onInput=${(e) => setNote(e.target.value)} onBlur=${enregistrerNote}></textarea>
-    </div>
+    <button class="btn-principal" onClick=${onClose}>Terminé</button>
   <//>`;
 }
 
-// ---------- Extras payés ----------
-function RangExtra({ date, j, onOuvrir }) {
-  const ref = useRef();
-  const g = useRef(null);
-  const d = fromISO(date);
-  const ok = estValide(j);
-  const debut = (e) => {
-    if (ok) return;
-    g.current = { x: e.clientX, y: e.clientY, dx: 0, actif: false };
-  };
-  const bouge = (e) => {
-    const s = g.current;
-    if (!s) return;
-    const dx = e.clientX - s.x, dy = e.clientY - s.y;
-    if (!s.actif) {
-      if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) return void (g.current = null);
-      if (dx > 8) {
-        s.actif = true;
-        ref.current.setPointerCapture?.(e.pointerId);
-        ref.current.classList.add("glisse-en-cours");
-      } else return;
-    }
-    s.dx = Math.max(0, Math.min(150, dx));
-    ref.current.style.transform = `translateX(${s.dx}px)`;
-  };
-  const fin = () => {
-    const s = g.current;
-    g.current = null;
-    if (!s) return;
-    ref.current.classList.remove("glisse-en-cours");
-    ref.current.style.transform = "";
-    if (s.actif && s.dx > 90) {
-      const a = validerPaiement(date, true);
-      if (navigator.vibrate) navigator.vibrate(14);
-      toast(`Paiement du ${d.getDate()} validé`, a);
-    } else if (!s.actif) onOuvrir();
-  };
-  return html`<div class=${`rang ${ok ? "valide" : ""}`}>
-    ${!ok ? html`<div class="fond-valide"><${Icone} n="travail" />Valider</div>` : null}
-    <div class="rang-corps" ref=${ref} onPointerDown=${debut} onPointerMove=${bouge} onPointerUp=${fin} onPointerCancel=${() => { g.current = null; ref.current.style.transform = ""; }}>
-      <div class="date-bloc"><small>${JC[dayIndex(d)]}</small><b>${d.getDate()}</b></div>
-      <div class="rang-mid">
-        <div class="qui">${(j.extras || []).slice(0, 4).map((n) => html`<${Avatar} nom=${n} c=${couleurNom(n)} petit />`)}</div>
-        <div class="calc">${libelleTarifs(j)} <b>= ${totalJour(j)} €</b></div>
-        <div class="noms">${(j.extras || []).join(" · ")}</div>
-        ${j.note ? html`<div class="memo">${j.note}</div>` : null}
-      </div>
-      <div class=${`etat ${ok ? "ok" : "attente"}`}>${ok ? html`<${Icone} n="travail" />` : null}</div>
-    </div>
-  </div>`;
-}
-
-export function Extras({ mois, onMois, onReglages, onPicker, onJour }) {
+// ---------- Feuille d'un paiement : montant de chaque extra ----------
+export function FeuillePaie({ date, onClose }) {
   useStore();
-  const m = lireMois(mois);
-  const lignes = joursDuMois(mois).map((d) => [iso(d), m.jours[iso(d)] || {}, d]).filter(([, j]) => (j.extras || []).length);
-  const bilan = bilanPaiements(mois);
-  const total = bilan.ok + bilan.attente;
-  const groupes = [];
-  for (const l of lignes) {
-    const lundi = iso(mondayOf(l[2]));
-    if (!groupes.length || groupes.at(-1).lundi !== lundi) groupes.push({ lundi, lignes: [] });
-    groupes.at(-1).lignes.push(l);
-  }
-  const lib = (lundi) => {
-    const a = fromISO(lundi), b = addDays(a, 6);
-    return a.getMonth() === b.getMonth() ? `Semaine du ${a.getDate()} au ${b.getDate()} ${MOIS[b.getMonth()]}` : `Semaine du ${a.getDate()} ${MOIS_COURTS[a.getMonth()]} au ${b.getDate()} ${MOIS_COURTS[b.getMonth()]}`;
-  };
-  return html`<div class="vue">
-    <${Haut} mois=${mois} onMois=${onPicker} onReglages=${onReglages} />
-    <div class="defile">
-      <div class="hero">
-        <small>Extras du mois</small>
-        <div class="grand">${total} €</div>
-        <div class="barre"><i style=${{ width: `${total ? (bilan.ok / total) * 100 : 0}%` }}></i></div>
-        <div class="legende"><span>${bilan.ok} € validés</span><span>${bilan.attente ? `${bilan.attente} € à valider` : total ? "Tout est validé ✓" : ""}</span></div>
-      </div>
-      ${lignes.length
-        ? groupes.map((g) => html`<div class="groupe-sem">${lib(g.lundi)}</div>${g.lignes.map(([k, j]) => html`<${RangExtra} key=${k} date=${k} j=${j} onOuvrir=${() => onJour(k)} />`)}`)
-        : html`<div class="vide-etat"><${Icone} n="euro" /><p>Aucun renfort ce mois-ci.<br />Ajoutez-les depuis le planning, en touchant la colonne « Renforts ».</p></div>`}
-      ${lignes.length ? html`<p class="petit-texte" style=${{ textAlign: "center" }}>Balayez une ligne vers la droite pour la valider.</p>` : null}
+  const j = lireJour(date);
+  const d = fromISO(date);
+  const ex = j.extras || [];
+  const reg = getReglages();
+  const ok = ex.length && estValide(j);
+  if (!ex.length) return null;
+  return html`<${Feuille} titre=${`Extras du ${JOURS[dayIndex(d)].toLowerCase()} ${d.getDate()}`} sous="Montant de chaque extra" onClose=${onClose}>
+    <div class="bloc">
+      <div class="rapides"><button onClick=${() => definirTarifs(date, reg.tarifExtra)}>Tout à ${reg.tarifExtra} €</button><button onClick=${() => definirTarifs(date, 60)}>Tout à 60 €</button></div>
+      ${ex.map((n) => html`<div class="ligne-paie"><${Avatar} nom=${n} c=${couleurNom(n)} petit /><span class="qui">${n}</span>
+        <button class="pas" onClick=${() => definirTarif(date, n, tarifDe(j, n) - 10)} aria-label="Moins 10 euros">−</button>
+        <span class="montant">${tarifDe(j, n)} €</span>
+        <button class="pas" onClick=${() => definirTarif(date, n, tarifDe(j, n) + 10)} aria-label="Plus 10 euros">+</button></div>`)}
+      <div class="total-ligne"><span>Total du jour</span><b>${totalJour(j)} €</b></div>
     </div>
-    ${bilan.aValider
-      ? html`<div class="pied-glisse"><${Glisse} texte=${`Glisser pour tout valider (${bilan.aValider})`} icone="fleche" type="valide" onDone=${() => { const a = validerTout(mois); toast(`${bilan.aValider} jour${bilan.aValider > 1 ? "s" : ""} validé${bilan.aValider > 1 ? "s" : ""}`, a); }} /></div>`
-      : null}
+    ${ok
+      ? html`<button class="btn-secondaire" onClick=${() => validerPaiement(date, false)}>Remettre à valider</button><button class="btn-principal" onClick=${onClose}>Terminé</button>`
+      : html`<button class="btn-principal vert" onClick=${() => { const a = validerPaiement(date, true); toast(`Paiement du ${d.getDate()} validé`, a); onClose(); }}>Valider</button>`}
+  <//>`;
+}
+
+// ---------- Feuille d'une note ----------
+export function FeuilleNote({ date, onClose }) {
+  const j = lireJour(date);
+  const d = fromISO(date);
+  const [note, setNote] = useState(j.note || "");
+  const idees = ["Acompte 100 €", "Acompte 50 €", "Retard", "Absent prévenu", "Extra payé 60 €"];
+  const enregistrer = () => {
+    if ((j.note || "") !== note.trim()) definirNote(date, note);
+    onClose();
+  };
+  return html`<${Feuille} titre=${`Note du ${JOURS[dayIndex(d)].toLowerCase()} ${d.getDate()}`} sous=${`${cap(MOIS[d.getMonth()])} ${d.getFullYear()}`} onClose=${enregistrer}>
+    <div class="idees">${idees.map((t) => html`<button onClick=${() => setNote(note.trim() ? `${note.trim()} · ${t}` : t)}>${t}</button>`)}</div>
+    <textarea class="note-champ" rows="4" autofocus placeholder="Acompte, retard, remarque…" value=${note} onInput=${(e) => setNote(e.target.value)}></textarea>
+    <button class="btn-principal" onClick=${enregistrer} style=${{ marginTop: "12px" }}>Enregistrer</button>
+    ${j.note ? html`<button class="btn-secondaire" onClick=${() => { definirNote(date, ""); onClose(); }}>Supprimer la note</button>` : null}
+  <//>`;
+}
+
+// ---------- Fiches : planning + fiches à imprimer ----------
+function Apercu({ pages }) {
+  const ref = useRef();
+  const [w, setW] = useState(0);
+  useLayoutEffect(() => {
+    const mesurer = () => ref.current && setW(ref.current.clientWidth);
+    mesurer();
+    const ro = new ResizeObserver(mesurer);
+    ro.observe(ref.current);
+    return () => ro.disconnect();
+  }, []);
+  return html`<div class="apercu" ref=${ref}>
+    ${pages.map((p, i) => {
+      const paysage = p.type === "planning";
+      const L = paysage ? 1122.5 : 793.7;
+      const k = w ? w / L : 0.4;
+      return html`<p class="page-etiquette">Page ${i + 1} sur ${pages.length} · ${paysage ? "Planning du mois" : `Fiche de ${p.titre}`}</p>
+        <div class="papier-page" style=${{ height: `${(paysage ? 793.7 : 1122.5) * k}px` }}>
+          <div style=${{ transform: `scale(${k})`, transformOrigin: "top left", width: `${L}px` }} dangerouslySetInnerHTML=${{ __html: p.html }}></div>
+        </div>`;
+    })}
   </div>`;
 }
 
-// ---------- Imprimer ----------
-export function Imprimer({ mois, onMois, onReglages, onPicker, onExtras }) {
+function BoutonsImpression({ onImprimer, onPDF, pdfEtat }) {
+  return html`<div class="rangee-imp">
+    <button class="btn-imprimer" onClick=${onImprimer}><${Icone} n="imprimer" /><span>Imprimer</span></button>
+    <button class="btn-pdf" onClick=${onPDF} aria-label="Obtenir en PDF"><${Icone} n="doc" /><span>${pdfEtat || "PDF"}</span></button>
+  </div>`;
+}
+
+export function Fiches({ mois, onPicker, onReglages, onAllerExtras }) {
   useStore();
   const pages = useMemo(() => toutesLesPages(mois), [mois, rev]);
-  const [cw, setCw] = useState(() => Math.min(window.innerWidth * 0.62, 270));
-  useEffect(() => {
-    const f = () => setCw(Math.min(window.innerWidth * 0.62, 270));
-    window.addEventListener("resize", f);
-    return () => window.removeEventListener("resize", f);
-  }, []);
-  const car = useRef();
-  const [page, setPage] = useState(0);
-  const [statut, setStatut] = useState("");
-  const [pdf, setPdf] = useState(false);
   const bilan = bilanPaiements(mois);
   const fiches = pages.filter((p) => p.type === "fiche");
   const noms = [...new Set(fiches.map((p) => p.titre))];
-
-  useEffect(() => {
-    const el = car.current;
-    let raf;
-    const maj = () => {
-      raf = 0;
-      const pas = cw - 52;
-      const centre = el.scrollLeft;
-      [...el.children].forEach((c, i) => {
-        const d = (i * pas - centre) / pas;
-        c.style.setProperty("--d", Math.max(-3, Math.min(3, d)).toFixed(3));
-        c.style.setProperty("--ad", Math.min(3, Math.abs(d)).toFixed(3));
-      });
-      setPage(Math.max(0, Math.min(pages.length - 1, Math.round(centre / pas))));
-    };
-    const surScroll = () => !raf && (raf = requestAnimationFrame(maj));
-    el.addEventListener("scroll", surScroll, { passive: true });
-    maj();
-    return () => el.removeEventListener("scroll", surScroll);
-  }, [pages.length, cw]);
+  const [statut, setStatut] = useState("");
+  const [pdfEtat, setPdfEtat] = useState("");
+  const [attente, setAttente] = useState(false);
+  const { nom, annee } = nomMois(mois);
 
   const lancerPDF = async () => {
-    if (pdf) return;
-    setPdf(true);
-    setStatut("Création du PDF…");
+    if (pdfEtat && !attente) return;
+    setAttente(false);
+    setPdfEtat("…");
+    setStatut("");
     try {
-      const r = await partagerPDF(mois, (i, n) => setStatut(`Création du PDF… page ${i} sur ${n}`));
-      setStatut(r === "toucher-encore" ? "PDF prêt : touchez « PDF » une fois de plus." : "");
+      const r = await partagerPDF(mois, (i, n) => setPdfEtat(`${i}/${n}`));
+      if (r === "toucher-encore") {
+        setAttente(true);
+        setPdfEtat("Prêt : toucher");
+        setStatut("Le PDF est prêt : touchez « PDF » une fois de plus.");
+        return;
+      }
     } catch (err) {
       setStatut(`PDF impossible : ${err.message}`);
-    } finally {
-      setPdf(false);
     }
+    setPdfEtat("");
   };
   const lancerImpression = () => {
     setStatut("");
     imprimer(mois, () => {
-      setStatut("La fenêtre d'impression ne s'est pas ouverte : préparation du PDF, puis choisissez « Imprimer ».");
+      setStatut("La fenêtre d'impression ne s'est pas ouverte : préparation du PDF, puis choisissez « Imprimer » dans la liste.");
       lancerPDF();
     });
   };
-  const p = pages[page];
-  const { nom: nm, annee } = nomMois(mois);
+  const boutons = html`<${BoutonsImpression} onImprimer=${lancerImpression} onPDF=${lancerPDF} pdfEtat=${pdfEtat} />`;
+
   return html`<div class="vue">
-    <${Haut} mois=${mois} onMois=${onPicker} onReglages=${onReglages} />
-    <div class="im-tete"><h1>Prêt à imprimer</h1><p>${pages.length} pages : le planning de ${nm.toLowerCase()} et ${fiches.length ? `${noms.length} fiche${noms.length > 1 ? "s" : ""} de présence` : "aucune fiche"}.</p></div>
-    <div class="carrousel" ref=${car} style=${{ "--cw": `${cw}px` }}>
-      ${pages.map((pg, i) => {
-        const paysage = pg.type === "planning";
-        const largeurFeuille = paysage ? 1122.5 : 793.7;
-        const k = cw / largeurFeuille;
-        return html`<div class="vignette" key=${i}><div class="papier" style=${{ width: `${cw}px`, height: `${cw * (paysage ? 0.7071 : 1.4142)}px` }}>
-          ${Math.abs(i - page) <= 2 ? html`<div style=${{ transform: `scale(${k})`, transformOrigin: "top left", width: `${largeurFeuille}px` }} dangerouslySetInnerHTML=${{ __html: pg.html }}></div>` : null}
-        </div></div>`;
-      })}
-    </div>
-    <div class="legende-page">${p ? html`Page <b>${page + 1}</b> sur ${pages.length} · ${p.type === "planning" ? "Planning du mois" : `Fiche de ${p.titre}`}` : ""}</div>
-    <div class="verifs">
-      <span class="verif"><i><${Icone} n="travail" /></i>Planning du mois</span>
-      ${noms.length ? html`<span class="verif"><i><${Icone} n="travail" /></i>${noms.length} fiche${noms.length > 1 ? "s" : ""}</span>` : null}
-      ${bilan.aValider
-        ? html`<button class="verif alerte" onClick=${onExtras}><i><${Icone} n="euro" /></i>${bilan.aValider} jour${bilan.aValider > 1 ? "s" : ""} d'extras à valider</button>`
-        : bilan.jours ? html`<span class="verif"><i><${Icone} n="travail" /></i>Extras validés</span>` : null}
-    </div>
-    <div class="im-bas">
-      <div class="im-statut">${statut}</div>
-      <${Glisse} texte="Glisser pour imprimer" icone="imprimer" type="imprime" onDone=${lancerImpression} relache=${1500} />
-      <button class="lien-pdf" onClick=${lancerPDF}><${Icone} n="doc" />${pdf ? "Création…" : "Obtenir en PDF"}</button>
+    <${Haut} mois=${mois} onPicker=${onPicker} onReglages=${onReglages} />
+    <div class="defile">
+      <div class="bloc carte-fiches">
+        <p class="fiches-mois">${nom} ${annee}</p>
+        <p class="petit-texte" style=${{ margin: "0 0 12px" }}>Planning du mois + ${noms.length} fiche${noms.length > 1 ? "s" : ""} de présence · ${pages.length} pages</p>
+        ${bilan.aValider
+          ? html`<div class="alerte"><span>${bilan.aValider} jour${bilan.aValider > 1 ? "s" : ""} d'extras pas encore validé${bilan.aValider > 1 ? "s" : ""} : le montant n'est pas imprimé.</span><button onClick=${onAllerExtras}>Aller les valider</button></div>`
+          : null}
+        ${boutons}
+        <p class="im-statut">${statut}</p>
+        <details class="aide"><summary>Comment imprimer en Wi-Fi ?</summary>
+          <ol><li>Allumez l'imprimante et connectez-la au même Wi-Fi que le téléphone.</li><li>Appuyez sur <b>Imprimer</b> : la fenêtre d'impression s'ouvre.</li><li>Touchez <b>Imprimante</b> et choisissez la vôtre.</li><li>Vérifiez le nombre de pages, puis <b>Imprimer</b> en haut à droite.</li></ol>
+          <p class="petit-texte">Il faut une imprimante compatible AirPrint.</p></details>
+      </div>
+      <${Apercu} pages=${pages} />
+      <div class="bloc">${boutons}</div>
     </div>
   </div>`;
 }
@@ -392,12 +379,13 @@ export function Imprimer({ mois, onMois, onReglages, onPicker, onExtras }) {
 // ---------- Choix du mois ----------
 export function ChoixMois({ mois, onChoix, onClose }) {
   const [annee, setAnnee] = useState(Number(mois.slice(0, 4)));
+  const auj = aujourdhui().slice(0, 7);
   return html`<${Feuille} titre="Choisir un mois" onClose=${onClose}>
     <div class="annee-nav"><button class="rond" onClick=${() => setAnnee(annee - 1)}><${Icone} n="gauche" /></button><b>${annee}</b><button class="rond" onClick=${() => setAnnee(annee + 1)}><${Icone} n="droite" /></button></div>
     <div class="grille-mois">
-      ${MOIS.map((nom, i) => {
+      ${MOIS.map((_, i) => {
         const m = `${annee}-${String(i + 1).padStart(2, "0")}`;
-        return html`<button class=${`mois-case ${m === mois ? "on" : ""}`} onClick=${() => onChoix(m)}>${cap(MOIS_COURTS[i])}${m === moisDe(new Date()) ? html`<small>ce mois-ci</small>` : null}</button>`;
+        return html`<button class=${`mois-case ${m === mois ? "on" : ""}`} onClick=${() => onChoix(m)}>${cap(MOIS_COURTS[i])}${m === auj ? html`<small>ce mois-ci</small>` : null}</button>`;
       })}
     </div>
   <//>`;
@@ -424,18 +412,19 @@ function Equipier({ e, i }) {
   </div>`;
 }
 
-export function Reglages({ onClose, onChange }) {
+export function Reglages({ onClose }) {
   useStore();
   const r = getReglages();
   return html`<${Feuille} titre="Réglages" sous="Tout reste sur ce téléphone" onClose=${onClose}>
     <div class="bloc"><p class="bloc-titre">Taille du texte</p>
-      <div class="seg">${[["normal", "Normal", 14], ["grand", "Grand", 19], ["tres", "Très grand", 25]].map(([v, l, s]) => html`<button class=${r.taille === v ? "on" : ""} style=${{ fontSize: `${s}px` }} onClick=${() => { modifierReglages((x) => (x.taille = v)); onChange?.(); }}>A</button>`)}</div></div>
+      <div class="seg">${[["normal", 14], ["grand", 19], ["tres", 25]].map(([v, s]) => html`<button class=${r.taille === v ? "on" : ""} style=${{ fontSize: `${s}px` }} onClick=${() => modifierReglages((x) => (x.taille = v))}>A</button>`)}</div></div>
+    <div class="bloc"><p class="bloc-titre">Tarif des extras</p>
+      <label class="champ"><span>Tarif d'un extra par jour</span><input type="number" inputmode="numeric" min="0" step="5" value=${r.tarifExtra} onChange=${(ev) => modifierReglages((x) => (x.tarifExtra = Math.max(0, Number(ev.target.value) || 0)))} /><span style=${{ color: "var(--ink3)" }}>€</span></label>
+      <p class="petit-texte">C'est le montant proposé sur la page « Extras payés ». On peut le changer jour par jour (par exemple 60 €).</p></div>
     <p class="bloc-titre" style=${{ margin: "18px 6px 10px" }}>Équipe</p>
     ${r.employes.map((e, i) => html`<${Equipier} key=${i} e=${e} i=${i} />`)}
     <button class="ajout-equipier" onClick=${() => modifierReglages((x) => x.employes.push({ nom: "", boutique: x.employes[0]?.boutique || "", colonne: 0, actif: true, repos: [], horaires: structuredClone(HORAIRES_DEFAUT) }))}>+ Ajouter un salarié</button>
     <p class="petit-texte" style=${{ margin: "-4px 6px 16px" }}>L'interrupteur décide s'il reçoit une fiche. Sur le planning, « OK » reprend ses horaires habituels.</p>
-    <div class="bloc"><p class="bloc-titre">Extras</p>
-      <label class="champ"><span>Tarif d'un extra par jour</span><input type="number" inputmode="numeric" min="0" step="5" value=${r.tarifExtra} onChange=${(ev) => modifierReglages((x) => (x.tarifExtra = Math.max(0, Number(ev.target.value) || 0)))} /><span style=${{ color: "var(--ink3)" }}>€</span></label></div>
     <div class="bloc"><p class="bloc-titre">Données</p>
       ${v1Disponible() ? html`<button class="btn-ligne" onClick=${() => { if (confirm("Reprendre les réglages et les plannings de la V1 ? Cela remplace ceux de la V2.")) { const n = importerV1(); toast(`${n} mois repris de la V1`); } }}>Reprendre les données de la V1</button>` : null}
       <button class="btn-ligne" onClick=${() => confirm("Remettre le planning de novembre 2026 d'origine ?") && reinitialiserNovembre()}>Remettre le planning de novembre 2026</button>

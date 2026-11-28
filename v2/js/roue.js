@@ -6,7 +6,7 @@ import { JOURS, fromISO, dayIndex } from "./dates.js";
 
 const APPUI_LONG_MS = 220;
 
-export function creerRoue({ nomDe, surChoix, surToucher }) {
+export function creerRoue({ nomDe, surChoix }) {
   const voile = document.createElement("div");
   voile.className = "roue-voile";
   voile.hidden = true;
@@ -22,10 +22,10 @@ export function creerRoue({ nomDe, surChoix, surToucher }) {
   let survol = null;
   let appui = null;
 
-  function ouvrir(bouton, x, y) {
+  function ouvrir(bouton, x, y, m = "glisse") {
     const { date, col } = bouton.dataset;
     cible = { date, col, bouton };
-    mode = "glisse";
+    mode = m;
     survol = null;
     const d = fromISO(date);
     titre.textContent = `${nomDe(col)} · ${JOURS[dayIndex(d)].toLowerCase()} ${d.getDate()}`;
@@ -114,11 +114,19 @@ export function creerRoue({ nomDe, surChoix, surToucher }) {
       return;
     }
     if (appui) {
-      const b = appui.bouton;
+      const b = appui.bouton, { x: ax, y: ay } = appui;
       annulerAppui();
-      surToucher(b);
+      ouvrir(b, x ?? ax, y ?? ay, "toucher"); // simple toucher : la roue reste ouverte, on touche son choix
     }
   }
+
+  voile.addEventListener("click", (e) => {
+    if (mode !== "toucher") return;
+    const b = e.target.closest(".roue-choix");
+    const c = cible;
+    fermer();
+    if (b && c) surChoix(c.date, c.col, b.dataset.id);
+  });
 
   let dernierTouch = 0;
   const pt = (e) => e.changedTouches?.[0] || e.touches?.[0] || e;

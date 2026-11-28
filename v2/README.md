@@ -3,14 +3,16 @@
 Nouvelle application, indépendante de la V1 (`../`) : mêmes fonctionnalités, interface repensée « swipe d'abord ».
 Adresse : `…/planning_belal/v2/`
 
-## Ce qui change
-- **Une semaine par écran**, sans aucun défilement vertical : on balaie à gauche / droite pour changer de semaine (le mois suit tout seul).
-- **Toucher** une case : OK ↔ Repos. **Maintenir** : la roue des 6 statuts (même physique que la V1). Chaque changement est annulable.
-- **Feuille du jour** (toucher la date ou la colonne « Renforts ») : renforts, paiement de chaque extra, **« glisser pour valider »**, commentaire — tout au même endroit. Elle se ferme en la tirant vers le bas.
-- **Extras** : bilan du mois, une ligne par jour à **balayer vers la droite pour valider**, ou **« glisser pour tout valider »**.
-- **Imprimer** : carrousel des 9 pages (planning paysage + fiches portrait), pastilles de vérification, **« glisser pour imprimer »** ; bouton PDF en option.
-- Style : fond « aurore » clair, verre dépoli, couleurs distinctes par statut et par salarié (oklch), titres en serif iOS.
-- Technologies : Preact + htm (15 Ko), modules ES, scroll-snap, CSS oklch / color-mix, aucune dépendance serveur.
+## Structure (comme la V1, avec un autre habillage)
+- **Planning** : tout le mois en une seule colonne, une carte par semaine, on **fait défiler vers le bas**. On change de mois avec les **flèches en haut à droite**.
+- **Toucher** une case ouvre la roue des 6 statuts (on touche son choix) ; **maintenir** puis glisser et relâcher marche aussi. Relâcher au milieu ferme sans rien changer.
+- **Renforts** : un toucher ouvre la liste des prénoms à choisir (rien d'autre).
+- **Extras payés** : **balayer vers la gauche** (ou l'onglet) affiche les commentaires : montants calculés, rond pour valider, appui sur le montant pour le modifier, notes. Chaque page garde sa hauteur.
+- **Fiches** : boutons **Imprimer** (en haut et en bas) + **PDF**, aperçu des 9 pages, rappel des extras non validés.
+- **Réglages** : taille du texte, **tarif des extras**, équipe (horaires habituels, repos), données.
+
+## Habillage
+Thème cosy : crème, taupe, caramel, plaid et grain de papier, accents manuscrits. Technologies : Preact + htm, modules ES, scroll-snap, CSS oklch.
 
 ## Données
 Séparées de la V1 (clés `v2.*`). Au premier lancement, les réglages et plannings de la V1 sont **copiés** automatiquement (la V1 n'est pas modifiée).
@@ -18,6 +20,6 @@ Réglages → « Reprendre les données de la V1 » pour recommencer la copie.
 
 ## Fichiers
 - `index.html`, `css/app.css` (interface), `css/print.css` (feuilles imprimées, identiques à la V1)
-- `js/app.js` (point d'entrée), `js/views.js` (écrans), `js/store.js` (données), `js/roue.js` (roue), `js/ui-parts.js` (feuilles, curseur de confirmation)
+- `js/app.js` (point d'entrée), `js/views.js` (écrans), `js/store.js` (données), `js/roue.js` (roue), `js/ui-parts.js` (feuilles)
 - `js/sheets.js` (pages imprimées), `js/impression.js` (impression + PDF), `js/dates.js`
 - `vendor/ui.js` : Preact + htm. Le PDF réutilise `../vendor/pdf.js`.
