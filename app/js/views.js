@@ -175,16 +175,39 @@ export function Planning({ mois, page, onPage, onDelta, onPicker, onReglages, on
   useEffect(() => {
     if (defile.current) defile.current.scrollTop = 0;
   }, [mois]);
-  // Page demandée par l'application (ex. « Aller les valider »)
-  useEffect(() => {
-    const el = pager.current;
-    if (el && Math.round(el.scrollLeft / el.clientWidth) !== page) el.scrollTo({ left: page * el.clientWidth, behavior: "smooth" });
-  }, [page]);
+  // Balayage : on laisse le navigateur finir son glissement et son aimantation, puis on note la page.
+  // (Avant, la page changeait au milieu du geste et relançait un défilement programmé qui se battait
+  // avec celui du doigt : la colonne partait à gauche puis revenait.)
+  const pageRef = useRef(page);
+  pageRef.current = page;
+  const venantDuDoigt = useRef(false);
+  const attente = useRef();
+  const entete = useRef();
   const surScroll = (e) => {
     const el = e.currentTarget;
-    const n = el.scrollLeft > el.clientWidth / 2 ? 1 : 0;
-    if (n !== page) onPage(n);
+    // En-tête (prénoms ↔ total des extras) en fondu qui suit le doigt, sans re-rendu
+    entete.current?.style.setProperty("--p", Math.min(1, Math.max(0, el.scrollLeft / el.clientWidth)).toFixed(3));
+    clearTimeout(attente.current);
+    attente.current = setTimeout(() => {
+      const w = el.clientWidth;
+      const n = Math.round(el.scrollLeft / w);
+      if (Math.abs(el.scrollLeft - n * w) > 2) return; // encore en mouvement : un autre évènement suivra
+      if (n !== pageRef.current) {
+        venantDuDoigt.current = true;
+        onPage(n);
+      }
+    }, 110);
   };
+  useEffect(() => () => clearTimeout(attente.current), []);
+  // Page demandée par un bouton (onglet, « Aller les valider ») : défilement doux vers cette page
+  useEffect(() => {
+    if (venantDuDoigt.current) {
+      venantDuDoigt.current = false;
+      return;
+    }
+    const el = pager.current;
+    if (el && Math.abs(el.scrollLeft - page * el.clientWidth) > 2) el.scrollTo({ left: page * el.clientWidth, behavior: "smooth" });
+  }, [page]);
 
   return html`<div class="vue" style=${{ "--n": vend.length }}>
     <${Haut} mois=${mois} onDelta=${onDelta} onPicker=${onPicker} onReglages=${onReglages}
@@ -192,16 +215,17 @@ export function Planning({ mois, page, onPage, onDelta, onPicker, onReglages, on
         <button class=${page === 0 ? "on" : ""} onClick=${() => onPage(0)}>Planning</button>
         <button class=${page === 1 ? "on" : ""} onClick=${() => onPage(1)}>Extras payés${bilan.aValider ? html`<i>${bilan.aValider}</i>` : null}</button>
       </div>`} />
-    ${page === 0
-      ? html`<div class="colonnes">
+    <div class="entete-pages" ref=${entete}>
+      <div class=${`colonnes ${page === 0 ? "actif" : ""}`} aria-hidden=${page !== 0}>
           <span></span>
           ${vend.map((v, i) => html`<div class=${`col-tete ${classeAvatar(i)}`}><${Avatar} nom=${v.nom} c=${classeAvatar(i)} /><span>${prenom(v.nom)}</span></div>`)}
           <div class="col-tete extras"><span class="ico"><${Icone} n="utilisateur" /></span><span>Renforts</span></div>
-        </div>`
-      : html`<div class="bilan-ligne">
+        </div>
+      <div class=${`bilan-ligne ${page === 1 ? "actif" : ""}`} aria-hidden=${page !== 1}>
           <div class="bilan-txt"><b>${bilan.ok} €</b> validés${bilan.attente ? html` · <span class="att"><b>${bilan.attente} €</b> à valider</span>` : null}</div>
           ${bilan.aValider ? html`<button class="tout-valider" onClick=${() => { const a = validerTout(mois); toast(`${bilan.aValider} jour${bilan.aValider > 1 ? "s" : ""} validé${bilan.aValider > 1 ? "s" : ""}`, a); }}>Tout valider</button>` : null}
-        </div>`}
+        </div>
+    </div>
     <div class="defile" ref=${defile}>
       <div class="pager2" ref=${pager} onScroll=${surScroll}>
         <div class="page-ref" ref=${p0}><${PagePlanning} mois=${mois} vend=${vend} onRenforts=${onRenforts} /></div>
