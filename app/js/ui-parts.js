@@ -1,7 +1,7 @@
 // Petits composants réutilisables : icônes, avatars, feuilles qui se ferment d'un glissement, « glisser pour confirmer »
-import { html, useState, useEffect, useRef } from "../vendor/ui.js";
-import { ICONES } from "./icons.js";
-import { abonner, rev } from "./store.js";
+import { html, useState, useEffect, useRef } from "../vendor/ui.js?v=22";
+import { ICONES } from "./icons.js?v=22";
+import { abonner, rev } from "./store.js?v=22";
 
 export const Icone = ({ n, cls = "", style }) => html`<svg class=${cls} style=${style} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" dangerouslySetInnerHTML=${{ __html: ICONES[n] || "" }}></svg>`;
 

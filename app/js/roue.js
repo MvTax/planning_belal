@@ -1,8 +1,8 @@
 // Roue de choix : appui prolongé sur une tuile → 6 bulles autour du doigt ; on glisse sur l'une d'elles et on relâche.
 // Un simple toucher fait basculer OK ↔ Repos. Même comportement physique que la V1.
-import { STATUTS } from "./store.js";
-import { svgStr } from "./icons.js";
-import { JOURS, fromISO, dayIndex } from "./dates.js";
+import { STATUTS } from "./store.js?v=22";
+import { svgStr } from "./icons.js?v=22";
+import { JOURS, fromISO, dayIndex } from "./dates.js?v=22";
 
 const APPUI_LONG_MS = 220;
 

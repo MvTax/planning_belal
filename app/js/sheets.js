@@ -1,7 +1,7 @@
 // Pages imprimées : planning du mois (A4 paysage) et fiches de présence hebdomadaires (A4 portrait).
 // Mise en page identique à la feuille papier.
-import { MOIS, JOURS, joursDuMois, addDays, mondayOf, dayIndex, iso, fromISO, toMin, heure, duree, estFerie, cap } from "./dates.js";
-import { getReglages, vendeurs, mois as lireMois, commentaireImprime } from "./store.js";
+import { MOIS, JOURS, joursDuMois, addDays, mondayOf, dayIndex, iso, fromISO, toMin, heure, duree, estFerie, cap } from "./dates.js?v=22";
+import { getReglages, vendeurs, mois as lireMois, commentaireImprime } from "./store.js?v=22";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const prenom = (n) => String(n).trim().split(/\s+/)[0];

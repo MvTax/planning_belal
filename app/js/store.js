@@ -1,5 +1,5 @@
 // Données de l'appli : réglages + planning de chaque mois. Tout reste sur le téléphone (localStorage).
-import { iso, joursDuMois, dayIndex, pad } from "./dates.js";
+import { iso, joursDuMois, dayIndex, pad } from "./dates.js?v=22";
 
 export const STATUTS = [
   { id: "travail", court: "OK", long: "Travaille" },

@@ -1,16 +1,16 @@
 // Écrans : planning du mois (+ page « extras payés » à balayer), fiches à imprimer, réglages
-import { html, useState, useEffect, useRef, useMemo, useLayoutEffect } from "../vendor/ui.js";
+import { html, useState, useEffect, useRef, useMemo, useLayoutEffect } from "../vendor/ui.js?v=22";
 import {
   STATUT, vendeurs, mois as lireMois, lireJour, getReglages, modifierReglages, definirRenforts, definirTarif, definirTarifs, definirNote,
   estValide, totalJour, tarifDe, libelleTarifs, validerPaiement, validerTout, bilanPaiements, ajouterExtraConnu, HORAIRES_DEFAUT, v1Disponible, importerV1,
   reinitialiserNovembre, toutEffacer, rev,
-} from "./store.js";
-import { JOURS, JC, MOIS, MOIS_COURTS, iso, fromISO, dayIndex, joursDuMois, estFerie, aujourdhui, nomMois, cap } from "./dates.js";
-import { Icone, Avatar, couleurNom, Feuille, useStore } from "./ui-parts.js";
-import { toutesLesPages } from "./sheets.js";
-import { imprimer, partagerPDF } from "./impression.js";
-import { Zoom, LARGEUR_FEUILLE, HAUTEUR_FEUILLE } from "./zoom.js";
-import { usePager } from "./pager.js";
+} from "./store.js?v=22";
+import { JOURS, JC, MOIS, MOIS_COURTS, iso, fromISO, dayIndex, joursDuMois, estFerie, aujourdhui, nomMois, cap } from "./dates.js?v=22";
+import { Icone, Avatar, couleurNom, Feuille, useStore } from "./ui-parts.js?v=22";
+import { toutesLesPages } from "./sheets.js?v=22";
+import { imprimer, partagerPDF } from "./impression.js?v=22";
+import { Zoom, LARGEUR_FEUILLE, HAUTEUR_FEUILLE } from "./zoom.js?v=22";
+import { usePager } from "./pager.js?v=22";
 
 const prenom = (n) => String(n).trim().split(/\s+/)[0];
 const classeAvatar = (i) => `a${i % 4}`;

@@ -2,7 +2,7 @@
 // Le défilement horizontal natif d'iOS (aimantation + effet « élastique » en bout de course)
 // faisait partir la page à gauche puis revenir. Ici : la page suit le doigt, puis glisse
 // jusqu'à sa place avec une courbe douce. Le défilement vertical reste natif.
-import { useEffect, useLayoutEffect, useRef } from "../vendor/ui.js";
+import { useEffect, useLayoutEffect, useRef } from "../vendor/ui.js?v=22";
 
 const DUREE = 380; // ms
 const COURBE = "cubic-bezier(.22,.8,.24,1)";

@@ -1,10 +1,10 @@
 // Planning V2 — point d'entrée
-import { html, render, useState, useEffect } from "../vendor/ui.js";
-import { getReglages, bilanPaiements, mois as lireMois, definirStatut, vendeurs, STATUT } from "./store.js";
-import { moisDe, decalerMois, JOURS, fromISO, dayIndex } from "./dates.js";
-import { Icone, useStore } from "./ui-parts.js";
-import { creerRoue } from "./roue.js";
-import { Planning, Fiches, FeuilleRenforts, FeuillePaie, FeuilleNote, ChoixMois, Reglages, ToastHote, toast } from "./views.js";
+import { html, render, useState, useEffect } from "../vendor/ui.js?v=22";
+import { getReglages, bilanPaiements, mois as lireMois, definirStatut, vendeurs, STATUT } from "./store.js?v=22";
+import { moisDe, decalerMois, JOURS, fromISO, dayIndex } from "./dates.js?v=22";
+import { Icone, useStore } from "./ui-parts.js?v=22";
+import { creerRoue } from "./roue.js?v=22";
+import { Planning, Fiches, FeuilleRenforts, FeuillePaie, FeuilleNote, ChoixMois, Reglages, ToastHote, toast } from "./views.js?v=22";
 
 const prenom = (n) => String(n).trim().split(/\s+/)[0];
 const ONGLETS = [

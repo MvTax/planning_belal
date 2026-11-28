@@ -1,6 +1,6 @@
 // Impression et PDF : les pages complètes sont placées dans #print-root, puis imprimées ou converties en PDF.
-import { MOIS } from "./dates.js";
-import { toutesLesPages } from "./sheets.js";
+import { MOIS } from "./dates.js?v=22";
+import { toutesLesPages } from "./sheets.js?v=22";
 
 function remplir(mois) {
   const pages = toutesLesPages(mois);

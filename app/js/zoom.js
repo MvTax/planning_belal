@@ -1,7 +1,7 @@
 // Agrandissement plein écran d'une page : ouverture animée depuis la miniature, zoom au pincement, déplacement au doigt,
 // un simple toucher referme (animation retour vers la miniature).
-import { html, useRef, useEffect, useLayoutEffect } from "../vendor/ui.js";
-import { Icone } from "./ui-parts.js";
+import { html, useRef, useEffect, useLayoutEffect } from "../vendor/ui.js?v=22";
+import { Icone } from "./ui-parts.js?v=22";
 
 export const LARGEUR_FEUILLE = 793.7; // A4 en px CSS (96 dpi)
 export const HAUTEUR_FEUILLE = 1122.5;
