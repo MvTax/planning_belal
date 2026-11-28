@@ -195,8 +195,8 @@ export function Planning({ mois, page, onPage, onDelta, onPicker, onReglages, on
     ${page === 0
       ? html`<div class="colonnes">
           <span></span>
-          ${vend.map((v, i) => html`<div class="col-tete"><${Avatar} nom=${v.nom} c=${classeAvatar(i)} /><span>${prenom(v.nom)}</span></div>`)}
-          <div class="col-tete extras"><span>Renforts</span></div>
+          ${vend.map((v, i) => html`<div class=${`col-tete ${classeAvatar(i)}`}><${Avatar} nom=${v.nom} c=${classeAvatar(i)} /><span>${prenom(v.nom)}</span></div>`)}
+          <div class="col-tete extras"><span class="ico"><${Icone} n="utilisateur" /></span><span>Renforts</span></div>
         </div>`
       : html`<div class="bilan-ligne">
           <div class="bilan-txt"><b>${bilan.ok} €</b> validés${bilan.attente ? html` · <span class="att"><b>${bilan.attente} €</b> à valider</span>` : null}</div>

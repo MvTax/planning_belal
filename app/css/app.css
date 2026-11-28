@@ -587,3 +587,26 @@ html.pdf-mode .aurore { display: none !important; }
 .zoom-outils { position: absolute; left: 50%; bottom: calc(var(--bas) + 22px); transform: translateX(-50%); z-index: 2; display: flex; gap: 14px; }
 .zoom-btn { width: 56px; height: 56px; border-radius: 50%; background: oklch(.99 .012 82 / .92); color: var(--ink); font-size: 30px; line-height: 1; display: grid; place-items: center; box-shadow: var(--ombre-2); }
 .zoom-btn span { margin-top: -3px; }
+
+/* =====================================================================
+   EN-TÊTES DE COLONNES : une étiquette teintée par salarié, alignée sur sa colonne
+   ===================================================================== */
+.colonnes { padding: 10px 23px 8px; align-items: stretch; }
+.col-tete {
+  position: relative; justify-content: center; gap: 5px; padding: 8px 2px 7px; border-radius: 18px;
+  background: linear-gradient(180deg, color-mix(in oklch, var(--a1) 24%, oklch(.99 .012 84)), color-mix(in oklch, var(--a1) 9%, oklch(.99 .012 84)));
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / .8), inset 0 0 0 1px color-mix(in oklch, var(--a2) 20%, transparent), 0 8px 14px -12px var(--a2);
+}
+.col-tete .avatar {
+  width: calc(30px * var(--t)); height: calc(30px * var(--t)); font-size: calc(14px * var(--t));
+  color: #fff; font-family: var(--serif); font-weight: 600; text-shadow: 0 1px 1px oklch(.3 .05 50 / .3);
+  box-shadow: 0 0 0 2px oklch(.99 .012 84), 0 4px 8px -3px var(--a2);
+}
+.col-tete span:not(.avatar):not(.ico) {
+  font-size: min(calc(13px * var(--t)), 3.4vw); font-weight: 700; letter-spacing: .01em;
+  color: color-mix(in oklch, var(--a2) 50%, oklch(.26 .03 50));
+}
+.col-tete.extras { background: none; box-shadow: none; border: 1.5px dashed oklch(.5 .05 60 / .28); }
+.col-tete.extras .ico { width: calc(30px * var(--t)); height: calc(30px * var(--t)); border-radius: 50%; display: grid; place-items: center; background: oklch(.5 .05 60 / .09); color: var(--ink2); }
+.col-tete.extras .ico svg { width: 17px; height: 17px; }
+.col-tete.extras span:last-child { font-size: min(calc(11px * var(--t)), 2.8vw); font-weight: 700; color: var(--ink2); letter-spacing: 0; }
