@@ -330,15 +330,11 @@ svg { display: block; }
 #print-root { display: none; }
 @media print {
   @page { size: A4 portrait; margin: 0; }
-  @page paysage { size: A4 landscape; margin: 0; }
   html, body { background: #fff !important; position: static !important; overflow: visible !important; height: auto !important; }
-  #app, .aurore, .dock, .toast, .roue-voile, .voile, .astuce { display: none !important; }
+  #app, .aurore, .dock, .toast, .roue-voile, .voile, .astuce, .zoom-voile { display: none !important; }
   #print-root { display: block !important; }
   #print-root .sheet { transform: none !important; margin: 0 !important; width: 210mm !important; height: 296.5mm !important; overflow: hidden; break-after: page; page-break-after: always; }
-  #print-root .sheet.paysage { page: paysage; width: 297mm !important; height: 209.5mm !important; }
   #print-root .sheet:last-child { break-after: auto; page-break-after: auto; }
-  html.print-rotation #print-root .p-wrap-rot { width: 210mm; height: 296.5mm; position: relative; overflow: hidden; break-after: page; page-break-after: always; }
-  html.print-rotation #print-root .p-wrap-rot .sheet.paysage { page: auto; position: absolute; top: 0; left: 0; transform-origin: top left; transform: translateX(209.5mm) rotate(90deg) !important; break-after: auto; page-break-after: auto; }
 }
 
 /* Création du PDF : couleurs simples (html2canvas ne lit pas oklch) */
@@ -580,3 +576,14 @@ html.pdf-mode .aurore { display: none !important; }
 .titre-mois .nom { font-size: min(calc(34px * var(--t)), 8.6vw); }
 .tuile .lib { font-size: min(calc(13.5px * var(--t)), 3.3vw); }
 @media (max-width: 380px) { .nav-mois button { width: 38px; } .nav-mois, .rond { height: 40px; } .rond { width: 40px; } }
+
+/* Aperçu : pages cliquables + plein écran */
+.papier-page { display: block; width: 100%; text-align: left; cursor: zoom-in; padding: 0; border: 0; }
+.papier-page .loupe { position: absolute; right: 10px; bottom: 10px; width: 36px; height: 36px; border-radius: 50%; background: oklch(.3 .04 50 / .78); color: #fff; display: grid; place-items: center; box-shadow: var(--ombre-1); }
+.papier-page .loupe svg { width: 19px; height: 19px; }
+.zoom-voile { position: fixed; inset: 0; z-index: 300; background: oklch(.28 .04 50 / .82); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); touch-action: none; overflow: hidden; -webkit-user-select: none; user-select: none; }
+.zoom-contenu { position: absolute; left: 0; top: 0; transform-origin: 0 0; background: #fff; border-radius: 6px; box-shadow: 0 30px 70px -20px rgba(0, 0, 0, .55); pointer-events: none; overflow: hidden; }
+.zoom-astuce { position: absolute; left: 50%; top: calc(var(--haut) + 10px); transform: translateX(-50%); z-index: 2; padding: 8px 16px; border-radius: 99px; background: oklch(.3 .04 50 / .72); color: #fff; font-family: var(--main); font-size: 17px; white-space: nowrap; pointer-events: none; animation: fondu .6s .5s both reverse, fondu .6s 3.2s forwards; }
+.zoom-outils { position: absolute; left: 50%; bottom: calc(var(--bas) + 22px); transform: translateX(-50%); z-index: 2; display: flex; gap: 14px; }
+.zoom-btn { width: 56px; height: 56px; border-radius: 50%; background: oklch(.99 .012 82 / .92); color: var(--ink); font-size: 30px; line-height: 1; display: grid; place-items: center; box-shadow: var(--ombre-2); }
+.zoom-btn span { margin-top: -3px; }

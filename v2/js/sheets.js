@@ -95,7 +95,7 @@ function semaineHtml(jours, debut, fin, ent) {
     }
   }
   return `<div class="week">
-      <p class="semaine">SEMAINE:<span class="val">${joursDans.length ? esc(libelleSemaine(joursDans)) : ""}</span></p>
+      <p class="semaine"><span class="lib">Semaine</span><span class="val">${joursDans.length ? esc(libelleSemaine(joursDans)) : ""}</span></p>
       <table><colgroup><col class="c-jour"><col class="c-date"><col><col><col><col><col></colgroup>
         <thead><tr><th>Jour</th><th>Date</th><th>Heure d'arrivée</th><th>Départ en Pause</th><th>Arrivée de pause</th><th>Heure de départ</th><th>Total heures</th></tr></thead>
         <tbody>${rows.join("")}</tbody></table></div>`;
@@ -113,12 +113,11 @@ export function pagesFiches(m) {
       pages.push({
         type: "fiche",
         titre: prenom(emp.nom),
-        html: `<div class="sheet">
-            <p class="title">FEUILLE DE PRESENCE HEBDOMADAIRE</p>
-            <p class="field">BOUTIQUE:<span class="val">${esc(emp.boutique)}</span></p>
-            <p class="field">SALARIÉ:<span class="val">${esc(emp.nom)}</span></p>
+        html: `<div class="sheet"><div class="cadre">
+            <header class="entete"><p class="titre">FEUILLE DE PRÉSENCE<em>hebdomadaire</em></p>
+              <div class="champs"><div class="champ"><small>Boutique</small><b>${esc(emp.boutique)}</b></div><div class="champ"><small>Salarié</small><b>${esc(emp.nom)}</b></div></div></header>
             ${semaines.slice(p, p + 3).map((j) => semaineHtml(j, debut, fin, ent[emp.nom] || {})).join("")}
-            <p class="signature">SIGNATURE:</p></div>`,
+            <div class="pied"><div class="signature">Signature</div></div></div></div>`,
       });
     }
   }
@@ -131,15 +130,15 @@ export function pagePlanning(m) {
   const d = lireMois(m);
   const vend = vendeurs();
   const boutique = getReglages().employes.find((e) => e.boutique)?.boutique || "";
-  const h = Math.min(7.2, 171 / jours.length);
-  const police = Math.min(11.5, h * 1.95).toFixed(1);
+  const h = Math.min(10, 229 / jours.length); // le tableau occupe toute la page
+  const police = Math.min(10.5, h * 1.38).toFixed(1);
   const cell = (s) => (s ? `<span class="pp-${s}">${TEXTE[s] || ""}</span>` : "");
   const lignes = jours
     .map((dt) => {
       const k = iso(dt), j = d.jours[k] || {}, ji = dayIndex(dt), ex = j.extras || [];
       return `<tr class="${ji === 0 ? "lundi" : ""}" style="height:${h.toFixed(2)}mm">
         <td class="pp-date">${estFerie(dt) ? `<span class="ferie">Férié</span>` : ""}Le ${dt.getDate()}</td>
-        <td class="pp-jour${ji >= 5 ? " we" : ""}">${JOURS[ji]}</td>
+        <td class="pp-jour${ji >= 5 ? " we" : ""}">${JOURS[ji].slice(0, 3)}.</td>
         ${vend.map((v) => `<td>${cell(j[v.colonne])}</td>`).join("")}
         <td class="pp-extra">${esc(ex[0] || "")}</td><td class="pp-extra">${esc(ex.slice(1).join(" / "))}</td>
         <td class="pp-com">${esc(commentaireImprime(j))}</td></tr>`;
@@ -149,13 +148,14 @@ export function pagePlanning(m) {
   return {
     type: "planning",
     titre: "Planning",
-    html: `<div class="sheet paysage">
-      <div class="pp-tete"><span>Magasin :<b>${esc(boutique)}</b></span><span>Mois :<b>${cap(MOIS[mm - 1])} ${y}</b></span></div>
+    html: `<div class="sheet plan"><div class="cadre">
+      <header class="entete"><p class="titre">PLANNING<em>${cap(MOIS[mm - 1])} ${y}</em></p>
+        <div class="champs"><div class="champ"><small>Magasin</small><b>${esc(boutique)}</b></div></div></header>
       <table class="pp" style="--pp-f:${police}pt">
-        <colgroup><col style="width:7.5%"><col style="width:10.5%">${vend.map(() => `<col style="width:${(40 / n).toFixed(2)}%">`).join("")}<col style="width:9.5%"><col style="width:9.5%"><col></colgroup>
-        <thead><tr><th rowspan="2">Date</th><th rowspan="2">JOUR</th>${vend.map((_, i) => `<th>Vendeur ${i + 1}</th>`).join("")}<th rowspan="2">Extra</th><th rowspan="2">Extra</th><th rowspan="2">Commentaires, Acomptes et Retards</th></tr>
+        <colgroup><col style="width:8.5%"><col style="width:8.5%">${vend.map(() => `<col style="width:${(43 / n).toFixed(2)}%">`).join("")}<col style="width:9.5%"><col style="width:9.5%"><col></colgroup>
+        <thead><tr><th rowspan="2">Date</th><th rowspan="2">Jour</th>${vend.map((_, i) => `<th>Vendeur ${i + 1}</th>`).join("")}<th rowspan="2">Extra</th><th rowspan="2">Extra</th><th rowspan="2">Commentaires, acomptes et retards</th></tr>
         <tr>${vend.map((v) => `<th class="pp-nom">${esc(prenom(v.nom))}</th>`).join("")}</tr></thead>
-        <tbody>${lignes}</tbody></table></div>`,
+        <tbody>${lignes}</tbody></table></div></div>`,
   };
 }
 

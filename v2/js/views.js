@@ -9,6 +9,7 @@ import { JOURS, JC, MOIS, MOIS_COURTS, iso, fromISO, dayIndex, joursDuMois, estF
 import { Icone, Avatar, couleurNom, Feuille, useStore } from "./ui-parts.js";
 import { toutesLesPages } from "./sheets.js";
 import { imprimer, partagerPDF } from "./impression.js";
+import { Zoom, LARGEUR_FEUILLE, HAUTEUR_FEUILLE } from "./zoom.js";
 
 const prenom = (n) => String(n).trim().split(/\s+/)[0];
 const classeAvatar = (i) => `a${i % 4}`;
@@ -290,6 +291,7 @@ export function FeuilleNote({ date, onClose }) {
 function Apercu({ pages }) {
   const ref = useRef();
   const [w, setW] = useState(0);
+  const [zoom, setZoom] = useState(null); // { page, miniature }
   useLayoutEffect(() => {
     const mesurer = () => ref.current && setW(ref.current.clientWidth);
     mesurer();
@@ -297,16 +299,15 @@ function Apercu({ pages }) {
     ro.observe(ref.current);
     return () => ro.disconnect();
   }, []);
+  const k = w ? w / LARGEUR_FEUILLE : 0.4;
   return html`<div class="apercu" ref=${ref}>
-    ${pages.map((p, i) => {
-      const paysage = p.type === "planning";
-      const L = paysage ? 1122.5 : 793.7;
-      const k = w ? w / L : 0.4;
-      return html`<p class="page-etiquette">Page ${i + 1} sur ${pages.length} · ${paysage ? "Planning du mois" : `Fiche de ${p.titre}`}</p>
-        <div class="papier-page" style=${{ height: `${(paysage ? 793.7 : 1122.5) * k}px` }}>
-          <div style=${{ transform: `scale(${k})`, transformOrigin: "top left", width: `${L}px` }} dangerouslySetInnerHTML=${{ __html: p.html }}></div>
-        </div>`;
-    })}
+    ${pages.map((p, i) => html`<p class="page-etiquette">Page ${i + 1} sur ${pages.length} · ${p.type === "planning" ? "Planning du mois" : `Fiche de ${p.titre}`}</p>
+      <button class="papier-page" style=${{ height: `${HAUTEUR_FEUILLE * k}px` }} aria-label=${`Agrandir la page ${i + 1}`}
+        onClick=${(e) => setZoom({ page: p, miniature: e.currentTarget.getBoundingClientRect() })}>
+        <div style=${{ transform: `scale(${k})`, transformOrigin: "top left", width: `${LARGEUR_FEUILLE}px`, pointerEvents: "none" }} dangerouslySetInnerHTML=${{ __html: p.html }}></div>
+        <span class="loupe"><${Icone} n="zoom" /></span>
+      </button>`)}
+    ${zoom ? html`<${Zoom} page=${zoom.page} miniature=${zoom.miniature} onClose=${() => setZoom(null)} />` : null}
   </div>`;
 }
 

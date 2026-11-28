@@ -2,19 +2,16 @@
 import { MOIS } from "./dates.js";
 import { toutesLesPages } from "./sheets.js";
 
-const pagesNommees = () => "page" in document.documentElement.style;
-
 function remplir(mois) {
   const pages = toutesLesPages(mois);
   const racine = document.getElementById("print-root");
-  racine.innerHTML = pages.map((p) => (p.type === "planning" ? `<div class="p-wrap-rot">${p.html}</div>` : p.html)).join("");
+  racine.innerHTML = pages.map((p) => p.html).join("");
   return pages;
 }
 
 // À appeler directement depuis un geste (toucher, relâchement du curseur) : iOS l'exige pour ouvrir l'impression.
 export function imprimer(mois, repli) {
   remplir(mois);
-  document.documentElement.classList.toggle("print-rotation", !pagesNommees());
   let ouverte = false;
   const marque = () => (ouverte = true);
   window.addEventListener("beforeprint", marque, { once: true });
@@ -47,7 +44,7 @@ async function genererPDF(mois, progression) {
       const copie = feuilles[i].cloneNode(true);
       copie.style.transform = "none";
       scene.replaceChildren(copie);
-      const paysage = copie.classList.contains("paysage");
+      const paysage = false;
       const canvas = await html2canvas(copie, { scale: 2, backgroundColor: "#ffffff", logging: false });
       if (!pdf) pdf = new jsPDF({ unit: "mm", format: "a4", orientation: paysage ? "landscape" : "portrait" });
       else pdf.addPage("a4", paysage ? "landscape" : "portrait");

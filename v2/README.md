@@ -23,3 +23,9 @@ Réglages → « Reprendre les données de la V1 » pour recommencer la copie.
 - `js/app.js` (point d'entrée), `js/views.js` (écrans), `js/store.js` (données), `js/roue.js` (roue), `js/ui-parts.js` (feuilles)
 - `js/sheets.js` (pages imprimées), `js/impression.js` (impression + PDF), `js/dates.js`
 - `vendor/ui.js` : Preact + htm. Le PDF réutilise `../vendor/pdf.js`.
+
+## Impression et aperçu
+
+- Toutes les pages sont en **portrait A4** : le planning du mois occupe toute la feuille, puis une fiche hebdomadaire par salarié.
+- Fond blanc (peu d'encre), cadre marron, entêtes beiges, même police que l'application.
+- Un toucher sur une page d'aperçu l'ouvre en plein écran (transition, pincer pour zoomer, toucher pour fermer).
