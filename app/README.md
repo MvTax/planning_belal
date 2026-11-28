@@ -1,7 +1,7 @@
-# Planning — V2 (refonte complète)
+# Planning — application du patron (/app, ex-V2)
 
 Nouvelle application, indépendante de la V1 (`../`) : mêmes fonctionnalités, interface repensée « swipe d'abord ».
-Adresse : `…/planning_belal/v2/`
+Adresse : `…/planning_belal/app/` (les réglages complets sont dans `/dev`)
 
 ## Structure (comme la V1, avec un autre habillage)
 - **Planning** : tout le mois en une seule colonne, une carte par semaine, on **fait défiler vers le bas**. On change de mois avec les **flèches en haut à droite**.
