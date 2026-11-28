@@ -1,0 +1,177 @@
+/* =====================================================================
+   PLANNING V3 — couche ergonomique fondée sur la recherche
+   Chaque règle renvoie à un principe de RECHERCHE.md (§ entre crochets).
+   Mesures pour l'iPhone XR : 326 ppp, 2 px/pt → 1 mm ≈ 6,4 pt (px CSS).
+   ===================================================================== */
+
+/* [P5] Contraste : texte principal ≥ 7:1, texte secondaire ≥ 4,5:1 (WCAG 1.4.6 AAA).
+   La V2 avait un gris clair à 2,5:1, illisible pour un œil de 65 ans. */
+:root {
+  --ink: oklch(.27 .035 50);    /* 13,2:1 sur le fond crème */
+  --ink2: oklch(.42 .04 55);    /*  7,4:1 */
+  --ink3: oklch(.5 .035 60);    /*  5,3:1 */
+  --accent: oklch(.47 .085 50); /*  6,1:1 */
+  --rouge: oklch(.48 .12 30);   /*  6,0:1 */
+  --barre: 64px;                /* hauteur des onglets du bas */
+}
+
+/* [P8] Aucun mouvement décoratif permanent : il attire l'œil sans rien dire */
+.aurore i { animation: none !important; }
+
+/* [P6] L'écriture manuscrite reste décorative : toute information est en sans-serif */
+.note-ligne.pleine, .note-champ, .tout-valider, .alerte button, .astuce .gestes, .page-etiquette,
+.feuille-tete p, .zoom-astuce, .titre-mois .annee, .jj .ferie, .groupe-sem, .annee-nav b { font-family: var(--sans) !important; }
+.titre-mois .annee { font-size: calc(14px * var(--t)); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--ink2); margin-bottom: 2px; }
+.feuille-tete p { font-size: calc(16px * var(--t)); color: var(--ink2); }
+.page-etiquette { font-size: calc(16px * var(--t)); font-weight: 700; color: var(--ink2); }
+.tout-valider { font-size: calc(16px * var(--t)); font-weight: 800; min-height: 48px; padding: 0 16px; border-radius: 99px; background: oklch(.47 .085 50 / .12); }
+.alerte button { font-size: calc(16px * var(--t)); font-weight: 800; min-height: 44px; }
+.annee-nav b { font-size: calc(26px * var(--t)); font-weight: 700; color: var(--ink); }
+
+/* ---------- En-tête : lire en haut, agir en bas [P1] ---------- */
+.onglets-pl { display: none; } /* Planning / Extras / Fiches passent dans la barre du bas */
+.haut { padding: calc(var(--haut) + 10px) 14px 4px; }
+.haut::after { margin-top: 4px; }
+.actions-haut { gap: 8px; align-self: center; }
+/* [P2] Les flèches restent en haut (usage : une fois par mois), mais grossissent :
+   un coin d'écran demande ~12 mm (Hoober 2017) → 56 pt = 8,7 mm visibles + zone de touche étendue */
+.nav-mois { height: 58px; border-radius: 20px; }
+.nav-mois button { width: 58px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+.nav-mois button svg { width: 22px; height: 22px; }
+.nav-mois .mois-voisin { font-size: 12.5px; font-weight: 800; color: var(--ink2); letter-spacing: 0; line-height: 1; }
+.rond { width: 52px; height: 52px; }
+.rond svg { width: 25px; height: 25px; }
+@media (max-width: 380px) { .nav-mois button { width: 50px; } .nav-mois { height: 54px; } .rond { width: 48px; height: 48px; } }
+
+/* ---------- Grille du mois : cibles plus grandes [P2][P3] ----------
+   Marges réduites pour donner la largeur aux cases : 4 cases ≈ 68 × 72 pt ≈ 10,6 × 11,2 mm
+   (au-dessus des 9,2–9,6 mm de Parhi 2006 et des 10 mm à 98–99 % de Hoober 2017).
+   Le choix final se fait dans la roue, sur des bulles de 14 mm (Leitão & Silva). */
+.defile { padding: 4px 8px calc(var(--bas) + var(--barre) + 34px); }
+.colonnes, .ligne-j { grid-template-columns: min(calc(42px * var(--t)), 52px) repeat(var(--n, 4), minmax(0, 1fr)) min(calc(52px * var(--t)), 60px); gap: 5px; }
+.colonnes { padding: 8px 13px 6px; }
+.carte-sem { padding: 1px 4px; border-radius: 20px; }
+.carte-sem .ligne-j { min-height: calc(78px * var(--t)); padding: 4px 0; }
+.carte-sem .tuile, .carte-sem .renforts { min-height: calc(70px * var(--t)); }
+.tuile { border-radius: 18px; gap: 4px; }
+.tuile svg { width: calc(21px * var(--t)); height: calc(21px * var(--t)); }
+.tuile .lib { font-size: min(calc(16px * var(--t)), 4.3vw); font-weight: 800; letter-spacing: -.02em; }
+@media (max-height: 720px) { .tuile svg { display: block; } }
+.tuile.vide { border: 2px dashed oklch(.42 .04 55 / .45); color: var(--ink2); }
+.tuile.vide svg { width: 22px; height: 22px; opacity: .85; }
+/* [P3] Zone de touche étendue : un toucher dans l'espace entre deux cases compte pour la plus proche */
+.tuile::after { content: ""; position: absolute; inset: -3px; }
+
+/* [P5] Couleurs des statuts : texte ≥ 6,6:1 sur sa case, toujours doublé d'une icône et d'un mot [P7] */
+.s-travail { --cf: oklch(.36 .09 150); }
+.s-repos   { --cf: oklch(.4 .12 30); }
+.s-conge   { --cf: oklch(.4 .085 70); }
+.s-ecole   { --cf: oklch(.39 .08 330); }
+.s-maladie { --cf: oklch(.38 .07 240); }
+
+/* Jours et noms : plus grands, plus foncés [P4][P5] */
+.jj .nom-j { font-size: calc(12px * var(--t)); font-weight: 700; color: var(--ink2); letter-spacing: .08em; }
+.jj.we .nom-j { color: var(--rouge); }
+.jj .num { font-size: min(calc(27px * var(--t)), 34px); font-weight: 500; color: var(--ink); }
+.jj .ferie { font-size: 11px; font-weight: 800; padding: 2px 5px; letter-spacing: .02em; }
+.col-tete span { font-size: min(calc(14.5px * var(--t)), 3.9vw); font-weight: 800; color: var(--ink); }
+.col-tete.extras span { color: var(--ink2); }
+.avatar { width: calc(32px * var(--t)); height: calc(32px * var(--t)); }
+.renforts .plus { font-size: calc(13px * var(--t)); font-weight: 800; }
+.renforts .ajout svg { width: 24px; height: 24px; }
+.renforts .ajout { color: var(--ink2); }
+
+/* Repère « aujourd'hui » : la semaine en cours est encadrée [P9] */
+.carte-sem.en-cours { box-shadow: 0 0 0 2.5px oklch(.47 .085 50 / .55), var(--ombre-1); }
+.ligne-j.auj-ligne::after, .ligne-c.auj-ligne::after { content: ""; position: absolute; left: -4px; top: 6px; bottom: 6px; width: 4px; border-radius: 0 3px 3px 0; background: var(--accent); }
+
+/* ---------- Page Extras ---------- */
+.bilan-ligne { padding: 8px 14px; min-height: 60px; }
+.bilan-txt { font-size: calc(16px * var(--t)); }
+.paie-calc { font-size: min(calc(18px * var(--t)), 4.6vw); }
+.paie-qui { font-size: calc(14px * var(--t)); color: var(--ink2); }
+.paie-valider, .paie-coche { width: calc(62px * var(--t)); min-height: 60px; }
+.paie-valider svg, .paie-coche svg { width: 40px; height: 40px; }
+.note-ligne { min-height: 46px; font-size: calc(15.5px * var(--t)); color: var(--ink2); font-weight: 600; }
+.note-ligne i { width: 26px; height: 26px; font-size: 18px; }
+.note-ligne.pleine { font-size: calc(16px * var(--t)); font-weight: 600; line-height: 1.3; color: oklch(.33 .06 65); }
+.ligne-c { min-height: calc(76px * var(--t)); }
+
+/* ---------- Barre d'onglets en bas, pleine largeur [P1][P7] ----------
+   La zone du pouce couvre le bas de l'écran : les trois destinations y sont, avec icône ET mot. */
+.dock { left: 0; right: 0; bottom: 0; transform: none; border-radius: 24px 24px 0 0; padding: 8px 8px calc(var(--bas) + 8px); gap: 6px; border-width: 1px 0 0; }
+.dock button { flex: 1; width: auto !important; height: var(--barre); border-radius: 18px; font-size: min(calc(14px * var(--t)), 4vw); font-weight: 700; color: var(--ink2); gap: 4px; white-space: nowrap; transition: background .2s, color .2s; }
+.dock button svg { width: 27px; height: 27px; }
+.dock button.actif { color: var(--accent); background: oklch(.47 .085 50 / .13); font-weight: 800; }
+.dock .glisseur { display: none; }
+.dock .badge { top: 5px; right: calc(50% - 34px); min-width: 22px; height: 22px; font-size: 12.5px; background: var(--rouge); }
+
+/* ---------- Retour d'action en bas, là où est le pouce [P1][P10] ---------- */
+.toast { top: auto; bottom: calc(var(--bas) + var(--barre) + 26px); min-height: 64px; padding: 8px 8px 8px 18px; font-size: calc(16.5px * var(--t)); line-height: 1.25; animation: monte-bas .45s var(--ressort); }
+@keyframes monte-bas { from { transform: translateY(24px) scale(.97); opacity: 0; } }
+.toast button { min-height: 48px; padding: 0 18px; border-radius: 99px; background: oklch(1 0 0 / .16); color: oklch(.92 .07 75); font-size: calc(16px * var(--t)); font-weight: 800; }
+.astuce { bottom: calc(var(--bas) + var(--barre) + 30px); }
+.astuce .gestes { font-size: calc(16px * var(--t)); line-height: 1.4; }
+.astuce button { min-height: 48px; padding: 0 18px; font-size: 16px; }
+
+/* ---------- Roue : bulles de 14 mm (Leitão & Silva 2012 ; Silva et al. 2017) [P2] ---------- */
+.roue-choix { width: min(calc(88px * var(--t)), 100px); height: min(calc(88px * var(--t)), 100px); gap: 4px; }
+.roue-choix svg { width: 25px; height: 25px; }
+.roue-choix span { font-size: min(calc(15.5px * var(--t)), 18px); font-weight: 800; }
+.roue-centre { width: 58px; height: 58px; }
+.roue-centre svg { width: 22px; height: 22px; }
+.roue-titre { font-size: calc(18px * var(--t)); padding: 12px 22px; }
+
+/* ---------- Feuilles du bas : tout se ferme d'un bouton visible [P7] ---------- */
+.fermer { width: 48px; height: 48px; }
+.fermer svg { width: 20px; height: 20px; }
+.feuille-corps { padding-bottom: calc(var(--bas) + 26px); }
+.puce { min-height: 52px; padding: 10px 18px 10px 10px; font-size: calc(17px * var(--t)); }
+.puce .avatar.petit { width: 28px; height: 28px; font-size: 12px; }
+.puce.nouveau { padding-left: 18px; }
+.pas { width: 54px; height: 54px; font-size: 28px; }
+.rapides button { min-height: 50px; font-size: calc(15px * var(--t)); }
+.idees button { min-height: 46px; font-size: calc(15.5px * var(--t)); }
+.btn-principal { min-height: 60px; font-size: calc(18px * var(--t)); }
+.btn-secondaire { min-height: 56px; font-size: calc(17px * var(--t)); }
+.note-champ { font-size: calc(18px * var(--t)); line-height: 1.4; background-image: none; }
+.champ { min-height: 56px; font-size: calc(17px * var(--t)); }
+.btn-ligne { min-height: 56px; font-size: calc(17px * var(--t)); }
+.seg button { padding: 14px 0; }
+.jours-rond button { width: min(calc(44px * var(--t)), 12vw); height: min(calc(44px * var(--t)), 12vw); font-size: calc(16px * var(--t)); }
+.interrupteur { width: 60px; height: 36px; }
+.interrupteur i::after { width: 32px; height: 32px; }
+.interrupteur input:checked + i::after { transform: translateX(24px); }
+.h-grille input { padding: 12px 2px; font-size: 15px; }
+.mois-case { padding: 22px 0; font-size: calc(21px * var(--t)); }
+
+/* ---------- Fiches : « Imprimer » toujours sous le pouce [P1] ---------- */
+.imp-collant { position: sticky; bottom: calc(var(--bas) + var(--barre) + 26px); z-index: 4; margin: 0; padding: 10px; border-radius: 26px; background: oklch(.985 .016 80 / .92); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); box-shadow: var(--ombre-2); }
+.btn-imprimer { min-height: 68px; font-size: calc(20px * var(--t)); }
+.btn-pdf { min-width: 96px; font-size: calc(16px * var(--t)); }
+.im-statut { font-size: calc(15px * var(--t)); }
+.aide summary { min-height: 48px; display: flex; align-items: center; font-size: calc(16px * var(--t)); }
+.aide ol { font-size: calc(16px * var(--t)); }
+.papier-page .loupe { width: 48px; height: 48px; }
+.papier-page .loupe svg { width: 24px; height: 24px; }
+.zoom-btn { width: 64px; height: 64px; }
+.zoom-astuce { font-size: 16px; font-weight: 700; }
+
+/* Pression visible : chaque bouton s'enfonce sous le doigt [P10] */
+.dock button:active, .btn-ligne:active, .puce:active, .tout-valider:active, .note-ligne:active, .nav-mois button:active { transform: scale(.96); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* Ajustements de mise en page */
+.titre-mois .nom { font-size: min(calc(30px * var(--t)), 6.9vw); letter-spacing: .035em; }
+.col-tete.extras span { font-size: min(calc(12.5px * var(--t)), 3.3vw); }
+.tout-valider { white-space: nowrap; flex: none; }
+.dock .badge { right: calc(50% - 42px); }
+.mesures { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mesures div { background: oklch(.47 .085 50 / .07); border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 2px; }
+.mesures b { font-family: var(--serif); font-size: calc(24px * var(--t)); font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.mesures span { font-size: calc(13.5px * var(--t)); color: var(--ink2); line-height: 1.25; }
+/* Sur l'écran Fiches, le message passe au-dessus de la barre « Imprimer » */
+#app:has(.imp-collant) .toast { bottom: calc(var(--bas) + var(--barre) + 124px); }

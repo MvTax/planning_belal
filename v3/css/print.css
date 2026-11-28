@@ -1,0 +1,68 @@
+/* =====================================================================
+   Pages imprimées — thème de l'application : fond BLANC (peu d'encre),
+   traits bruns, beige très clair pour les titres, polices de l'appli.
+   ===================================================================== */
+:root {
+  --f-brun: #7a5a3f; --f-texte: #3d2b20; --f-beige: #efe3cf; --f-creme: #f9f3e8; --f-sable: #f4e9d3;
+  --f-caramel: #a9794f; --f-terre: #b04a32; --f-sauge: #44704f; --f-miel: #9a7118; --f-mauve: #75568a;
+  --f-serif: "Optima", "Avenir Next", "Gill Sans", "Trebuchet MS", sans-serif;
+  --f-sans: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+  --f-main: "Bradley Hand", "Noteworthy", "Snell Roundhand", "Segoe Print", cursive;
+}
+.sheet, .sheet * { -webkit-print-color-adjust: exact; print-color-adjust: exact; box-sizing: border-box; }
+.sheet { width: 210mm; height: 296mm; padding: 8mm; background: #fff; color: var(--f-texte); font-family: var(--f-sans); position: relative; overflow: hidden; transform-origin: top left; }
+.sheet .cadre { height: 100%; border: .5mm solid var(--f-brun); border-radius: 4mm; padding: 8mm 8mm 7mm 9mm; display: flex; flex-direction: column; position: relative; }
+.sheet .cadre::before { content: ""; position: absolute; inset: 1.4mm; border: .15mm solid var(--f-caramel); border-radius: 3mm; opacity: .55; pointer-events: none; }
+
+/* En-tête */
+.sheet .entete { display: flex; align-items: flex-end; justify-content: space-between; gap: 6mm; padding-bottom: 3.5mm; border-bottom: .3mm solid var(--f-brun); margin-bottom: 1mm; }
+.sheet .titre { margin: 0; font-family: var(--f-serif); font-size: 19pt; font-weight: 400; letter-spacing: .14em; line-height: 1; color: var(--f-texte); }
+.sheet .titre em { display: block; font-style: normal; font-family: var(--f-main); font-size: 14pt; letter-spacing: 0; color: var(--f-caramel); margin-top: 1.6mm; }
+.sheet .champs { display: flex; gap: 3mm; }
+.sheet .champ { min-width: 31mm; padding: 1.8mm 3.2mm 2mm; border: .25mm solid var(--f-brun); border-radius: 2.5mm; background: var(--f-creme); }
+.sheet .champ small { display: block; font-family: var(--f-serif); font-size: 6.6pt; letter-spacing: .16em; text-transform: uppercase; color: var(--f-caramel); }
+.sheet .champ b { display: block; font-family: var(--f-serif); font-weight: 600; font-size: 12.5pt; color: var(--f-texte); margin-top: .4mm; }
+
+/* Semaines (fiches) */
+.sheet .week { margin-top: 3.6mm; }
+.sheet .semaine { margin: 0 0 1.6mm; display: flex; align-items: baseline; gap: 2.5mm; }
+.sheet .semaine span.lib { font-family: var(--f-serif); font-size: 7.4pt; letter-spacing: .2em; text-transform: uppercase; color: var(--f-caramel); }
+.sheet .semaine .val { font-family: var(--f-main); font-size: 14.5pt; color: var(--f-texte); }
+.sheet table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; border: .45mm solid var(--f-brun); border-radius: 2.5mm; overflow: hidden; }
+.sheet th, .sheet td { border-right: .2mm solid var(--f-caramel); border-bottom: .2mm solid var(--f-caramel); text-align: center; vertical-align: middle; padding: 0 1mm; }
+.sheet th:last-child, .sheet td:last-child { border-right: 0; }
+.sheet tr:last-child > td { border-bottom: 0; }
+.sheet th { height: 7mm; background: var(--f-beige); font-family: var(--f-serif); font-size: 7.4pt; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--f-texte); border-bottom: .35mm solid var(--f-brun); }
+.sheet td { height: 8.5mm; font-size: 12.5pt; font-family: var(--f-serif); color: var(--f-texte); }
+.sheet td.jour { width: 21mm; background: var(--f-creme); font-size: 8.6pt; font-weight: 700; letter-spacing: .04em; position: relative; }
+.sheet col.c-jour { width: 20%; }
+.sheet col.c-date { width: 11%; }
+.sheet .ferie { position: absolute; right: calc(100% + 1.2mm); top: 50%; transform: translateY(-50%) rotate(-8deg); color: var(--f-terre); font-family: var(--f-main); font-size: 10pt; font-weight: 400; white-space: nowrap; letter-spacing: 0; }
+.sheet td.repos { background: #fff; color: var(--f-terre); font-size: 21pt; font-weight: 400; letter-spacing: .2em; }
+.sheet td.repos.span2 { font-size: 30pt; }
+.sheet td.absence { color: var(--f-terre); font-size: 11.5pt; letter-spacing: .4em; font-weight: 600; }
+.sheet .pied { margin-top: auto; display: flex; justify-content: flex-end; align-items: flex-end; padding-top: 3mm; }
+.sheet .signature { width: 62mm; border-top: .3mm solid var(--f-brun); padding-top: 1.2mm; text-align: center; font-family: var(--f-main); font-size: 13pt; color: var(--f-caramel); }
+
+/* Planning du mois (portrait) */
+.sheet.plan .cadre { padding: 7mm 6mm 6mm 8.5mm; }
+.sheet.plan .entete { padding-bottom: 3mm; margin-bottom: 3.5mm; }
+.sheet.plan .titre { font-size: 17pt; }
+.sheet.plan .champs .champ { min-width: 27mm; }
+table.pp { border-radius: 2.2mm; }
+.pp th { height: auto; padding: .6mm 1mm; font-size: calc(var(--pp-f, 9pt) - 1.4pt); }
+.pp th.pp-nom { background: var(--f-creme); font-family: var(--f-main); font-size: 11.5pt; font-weight: 400; letter-spacing: 0; text-transform: none; border-bottom: .35mm solid var(--f-brun); color: var(--f-texte); }
+.pp td { height: auto; font-size: var(--pp-f, 9pt); white-space: nowrap; overflow: hidden; padding: 0 .6mm; }
+.pp tr.lundi > td { border-top: .45mm solid var(--f-brun); }
+.pp td.pp-date { font-size: calc(var(--pp-f, 9pt) - .6pt); text-align: left; padding-left: 1.6mm; position: relative; color: var(--f-texte); overflow: visible; }
+.pp td.pp-jour { font-family: var(--f-serif); font-size: calc(var(--pp-f, 9pt) - 1.6pt); letter-spacing: .08em; text-transform: uppercase; background: #fff; }
+.pp td.pp-jour.we { background: var(--f-sable); font-weight: 700; }
+.pp td.pp-extra { font-size: calc(var(--pp-f, 9pt) - .6pt); color: var(--f-caramel); font-weight: 600; }
+.pp td.pp-com { font-size: calc(var(--pp-f, 9pt) - 1.8pt); text-align: left; padding-left: 1.2mm; white-space: normal; line-height: 1.08; font-family: var(--f-main); color: var(--f-texte); }
+.pp-travail { color: var(--f-sauge); font-weight: 700; }
+.pp-repos { color: var(--f-terre); font-weight: 700; }
+.pp-conge { color: var(--f-miel); font-weight: 700; }
+.pp-ecole { color: var(--f-mauve); font-weight: 700; }
+.pp-maladie { color: var(--f-caramel); font-weight: 700; }
+.pp-absent { color: var(--f-texte); font-weight: 700; }
+.pp td .ferie { font-size: 9pt; }
