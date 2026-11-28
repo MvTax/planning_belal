@@ -413,22 +413,22 @@ function Equipier({ e, i }) {
   </div>`;
 }
 
-// complet = false dans /app (le patron) : taille du texte + équipe de base.
-// complet = true dans /dev : en plus le tarif des extras et le bloc « Données » (reprise V1, remise à zéro, effacement).
+// complet = false dans /app (le patron) : taille du texte et tarif seulement.
+// complet = true dans /dev : équipe, horaires, colonnes et données en plus.
 export function Reglages({ onClose, complet = false }) {
   useStore();
   const r = getReglages();
   return html`<${Feuille} titre="Réglages" sous="Tout reste sur ce téléphone" onClose=${onClose}>
     <div class="bloc"><p class="bloc-titre">Taille du texte</p>
       <div class="seg">${[["normal", 14], ["grand", 19], ["tres", 25]].map(([v, s]) => html`<button class=${r.taille === v ? "on" : ""} style=${{ fontSize: `${s}px` }} onClick=${() => modifierReglages((x) => (x.taille = v))}>A</button>`)}</div></div>
-    ${complet ? html`    <div class="bloc"><p class="bloc-titre">Tarif des extras</p>
+    <div class="bloc"><p class="bloc-titre">Tarif des extras</p>
       <label class="champ"><span>Tarif d'un extra par jour</span><input type="number" inputmode="numeric" min="0" step="5" value=${r.tarifExtra} onChange=${(ev) => modifierReglages((x) => (x.tarifExtra = Math.max(0, Number(ev.target.value) || 0)))} /><span style=${{ color: "var(--ink3)" }}>€</span></label>
-      <p class="petit-texte">C'est le montant proposé sur la page « Extras payés ». On peut le changer jour par jour (par exemple 60 €).</p></div>` : null}
-    <p class="bloc-titre" style=${{ margin: "18px 6px 10px" }}>Équipe</p>
+      <p class="petit-texte">C'est le montant proposé sur la page « Extras payés ». On peut le changer jour par jour (par exemple 60 €).</p></div>
+    ${complet ? html`<p class="bloc-titre" style=${{ margin: "18px 6px 10px" }}>Équipe</p>
     ${r.employes.map((e, i) => html`<${Equipier} key=${i} e=${e} i=${i} />`)}
     <button class="ajout-equipier" onClick=${() => modifierReglages((x) => x.employes.push({ nom: "", boutique: x.employes[0]?.boutique || "", colonne: 0, actif: true, repos: [], horaires: structuredClone(HORAIRES_DEFAUT) }))}>+ Ajouter un salarié</button>
     <p class="petit-texte" style=${{ margin: "-4px 6px 16px" }}>L'interrupteur décide s'il reçoit une fiche. Sur le planning, « OK » reprend ses horaires habituels.</p>
-    ${complet ? html`<div class="bloc"><p class="bloc-titre">Données</p>
+    <div class="bloc"><p class="bloc-titre">Données</p>
       ${v1Disponible() ? html`<button class="btn-ligne" onClick=${() => { if (confirm("Reprendre les réglages et les plannings de la V1 ? Cela remplace ceux de la V2.")) { const n = importerV1(); toast(`${n} mois repris de la V1`); } }}>Reprendre les données de la V1</button>` : null}
       <button class="btn-ligne" onClick=${() => confirm("Remettre le planning de novembre 2026 d'origine ?") && reinitialiserNovembre()}>Remettre le planning de novembre 2026</button>
       <button class="btn-ligne danger" onClick=${() => confirm("Effacer tous les plannings enregistrés sur ce téléphone ?") && toutEffacer()}>Effacer tous les plannings</button></div>` : null}
